@@ -72,6 +72,14 @@ set(BASE_LIBS
         )
 
 # Mutation-Selection (mutselomega)
+add_executable(mutselcomega "src/CodonMutSelMultipleOmega.cpp")
+target_link_libraries(mutselcomega ${BASE_LIBS})
+
+# Read Mutation-Selection (readmutselomega)
+add_executable(readcodonmutselomega "src/ReadCodonMutSelMultipleOmega.cpp")
+target_link_libraries(readcodonmutselomega ${BASE_LIBS})
+
+# Mutation-Selection (mutselomega)
 add_executable(mutselomega "src/AAMutSelMultipleOmega.cpp")
 target_link_libraries(mutselomega ${BASE_LIBS})
 
