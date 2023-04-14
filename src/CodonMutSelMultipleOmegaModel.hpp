@@ -1,5 +1,5 @@
-#include "AAMutSelCodonMatrixBidimArray.hpp"
 #include "Chrono.hpp"
+#include "CodonMutSelCodonMatrixBidimArray.hpp"
 #include "CodonSequenceAlignment.hpp"
 #include "CodonSuffStat.hpp"
 #include "GTRSubMatrix.hpp"
@@ -107,10 +107,10 @@ std::tuple<std::vector<std::vector<double>>, std::vector<size_t>> open_preferenc
             nbr_col = n + 1;
         }
     }
-    nbr_col -= 20;
+    nbr_col -= 61;
 
     while (getline(input_stream, line)) {
-        std::vector<double> fitness_profil(20, 0.0);
+        std::vector<double> fitness_profil(61, 0.0);
         std::string word;
         std::istringstream line_stream(line);
         unsigned counter{0};
@@ -221,19 +221,19 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     OccupancySuffStat *profile_occupancy;
     OccupancySuffStat *omega_occupancy;
 
-    MultiDirichlet *componentaafitnessarray;
+    MultiDirichlet *componentcodonfitnessarray;
     DirichletSuffStatArray *basesuffstatarray;
 
     MultinomialAllocationVector *profile_alloc;
 
     // an array of codon matrices (one for each distinct aa fitness profile)
-    AAMutSelCodonMatrixBidimArray *componentcodonmatrixbidimarray;
+    CodonMutSelCodonMatrixBidimArray *componentcodonmatrixbidimarray;
 
     // this one is used by PhyloProcess: has to be a Selector<SubMatrix>
     DoubleMixtureSelector<SubMatrix> *sitesubmatrixarray;
-    DoubleMixtureSelector<AAMutSelOmegaCodonSubMatrix> *sitecodonsubmatrixarray;
+    DoubleMixtureSelector<CodonMutSelOmegaCodonSubMatrix> *sitecodonsubmatrixarray;
 
-    MixtureSelector<std::vector<double>> *siteaafitnessarray;
+    MixtureSelector<std::vector<double>> *sitecodonfitnessarray;
 
     PhyloProcess *phyloprocess;
 
@@ -400,19 +400,22 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         baseweight = new StickBreakingProcess(baseNcat, basekappa);
         baseprofile_occupancy = new OccupancySuffStat(baseNcat);
 
-        basecenterhypercenter.assign(Naa, 1.0 / Naa);
-        basecenterhyperinvconc = 1.0 / Naa;
+        basecenterhypercenter.assign(
+            GetCodonStateSpace()->GetNstate(), 1.0 / GetCodonStateSpace()->GetNstate());
+        basecenterhyperinvconc = 1.0 / GetCodonStateSpace()->GetNstate();
 
         basecenterarray = new IIDDirichlet(baseNcat, basecenterhypercenter, basecenterhyperinvconc);
         basecenterarray->SetUniform();
 
-        baseconchypermean = Naa;
+        baseconchypermean = GetCodonStateSpace()->GetNstate();
         baseconchyperinvshape = 1.0;
         baseconcentrationarray = new IIDGamma(baseNcat, baseconchypermean, baseconchyperinvshape);
-        for (int k = 0; k < baseNcat; k++) { (*baseconcentrationarray)[k] = 20.0; }
+        for (int k = 0; k < baseNcat; k++) {
+            (*baseconcentrationarray)[k] = (double)GetCodonStateSpace()->GetNstate();
+        }
         if (basemin == 1) { (*baseconcentrationarray)[0] = 1.0; }
         // suff stats for component aa fitness arrays
-        basesuffstatarray = new DirichletSuffStatArray(baseNcat, Naa);
+        basesuffstatarray = new DirichletSuffStatArray(baseNcat, GetCodonStateSpace()->GetNstate());
         componentalloc = new MultinomialAllocationVector(Ncat, baseweight->GetArray());
         componentcenterarray =
             new MixtureSelector<std::vector<double>>(basecenterarray, componentalloc);
@@ -424,9 +427,9 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         //
 
         // Ncat fitness profiles iid from the base distribution
-        componentaafitnessarray =
+        componentcodonfitnessarray =
             new MultiDirichlet(componentcenterarray, componentconcentrationarray);
-        if (flatfitness) { componentaafitnessarray->Flatten(); }
+        if (flatfitness) { componentcodonfitnessarray->Flatten(); }
 
         // mixture weights (truncated stick breaking process)
         kappa = 1.0;
@@ -456,25 +459,26 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         omega_alloc = new MultinomialAllocationVector(GetNsite(), omega_weight->GetArray());
 
         // selector, specifying which aa fitness array should be used for each site
-        siteaafitnessarray =
-            new MixtureSelector<std::vector<double>>(componentaafitnessarray, profile_alloc);
+        sitecodonfitnessarray =
+            new MixtureSelector<std::vector<double>>(componentcodonfitnessarray, profile_alloc);
 
         if (clamp_profiles) {
             for (int cat = 0; cat < Ncat; cat++) {
-                (*componentaafitnessarray)[cat] = std::get<0>(prefs)[cat];
+                (*componentcodonfitnessarray)[cat] = std::get<0>(prefs)[cat];
             }
         }
         if (clamp_profiles_allocation) {
             for (int site = 0; site < Nsite; site++) {
                 (*profile_alloc)[site] = static_cast<unsigned>(std::get<1>(prefs)[site]);
-                assert(siteaafitnessarray->GetVal(site).size() == 20);
+                assert(sitecodonfitnessarray->GetVal(site).size() ==
+                       GetCodonStateSpace()->GetNstate());
             }
         }
 
         // Ncat*omegaNcat mut sel codon matrices (based on the Ncat fitness profiles of the mixture,
         // and the omegaNcat finite mixture for omega)
-        componentcodonmatrixbidimarray = new AAMutSelCodonMatrixBidimArray(GetCodonStateSpace(),
-            nucmatrix, componentaafitnessarray, delta_omega_array, omega_shift);
+        componentcodonmatrixbidimarray = new CodonMutSelCodonMatrixBidimArray(GetCodonStateSpace(),
+            nucmatrix, componentcodonfitnessarray, delta_omega_array, omega_shift);
 
         // Bidimselector, specifying which codon matrix should be used for each site
         sitesubmatrixarray = new DoubleMixtureSelector<SubMatrix>(
@@ -482,7 +486,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
         // Bidimselector, specifying which codon matrix should be used for each site (needed to
         // collect omegapathsuffstatarray)
-        sitecodonsubmatrixarray = new DoubleMixtureSelector<AAMutSelOmegaCodonSubMatrix>(
+        sitecodonsubmatrixarray = new DoubleMixtureSelector<CodonMutSelOmegaCodonSubMatrix>(
             componentcodonmatrixbidimarray, profile_alloc, omega_alloc);
 
         phyloprocess =
@@ -514,7 +518,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         }
         model_node(info, "kappa", kappa);
         model_node(info, "weight", *weight);
-        model_node(info, "componentaafitnessarray", *componentaafitnessarray);
+        model_node(info, "componentcodonfitnessarray", *componentcodonfitnessarray);
         model_node(info, "profile_alloc", *profile_alloc);
         model_node(info, "delta_omega_array", *delta_omega_array);
         model_node(info, "omega_alloc", *omega_alloc);
@@ -543,7 +547,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 model_stat(info, "basekappa", basekappa);
             }
         }
-        model_stat(info, "aaent", [this]() { return GetMeanAAEntropy(); });
+        model_stat(info, "codonent", [this]() { return GetMeanAAEntropy(); });
         model_stat(info, "meanaaconc", [this]() { return GetMeanComponentAAConcentration(); });
         model_stat(info, "aacenterent", [this]() { return GetMeanComponentAAEntropy(); });
         model_stat(info, "statent", [this]() { return GetNucRREntropy(); });
@@ -636,7 +640,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             }
             total += StickBreakingHyperLogPrior();
             total += StickBreakingLogPrior();
-            total += AALogPrior();
+            total += CodonLogPrior();
         }
         if (omegamode < 2) { total += DeltaOmegaLogProb(); }
         return total;
@@ -716,10 +720,10 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     }
 
     //! log prior of amino-acid fitness profiles
-    double AALogPrior() const { return componentaafitnessarray->GetLogProb(); }
+    double CodonLogPrior() const { return componentcodonfitnessarray->GetLogProb(); }
 
     //! log prior of amino-acid fitness profile k
-    double AALogPrior(int k) const { return componentaafitnessarray->GetLogProb(k); }
+    double CodonLogPrior(int k) const { return componentcodonfitnessarray->GetLogProb(k); }
 
     //-------------------
     // Suff Stat and suffstatlogprobs
@@ -847,7 +851,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
             if (!flatfitness) {
                 aachrono.Start();
-                MoveAAMixture(3);
+                MoveCodonMixture(3);
                 aachrono.Stop();
 
                 basechrono.Start();
@@ -891,10 +895,10 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     }
 
     //! MCMC module for the mixture amino-acid fitness profiles
-    void MoveAAMixture(int nrep) {
+    void MoveCodonMixture(int nrep) {
         for (int rep = 0; rep < nrep; rep++) {
             if (!clamp_profiles) {
-                MoveAAProfiles();
+                MoveCodonProfiles();
                 ResampleEmptyProfileComponents();
             }
             if (!clamp_profiles_allocation) {
@@ -909,53 +913,58 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     //! resample empty components of the mixture from prior
     void ResampleEmptyProfileComponents() {
-        componentaafitnessarray->PriorResample(*profile_occupancy);
+        componentcodonfitnessarray->PriorResample(*profile_occupancy);
         componentcodonmatrixbidimarray->CorruptCodonMatricesRowOccupancy(*profile_occupancy);
     }
 
     //! MH move on amino-acid fitness profiles (occupied components only)
-    void MoveAAProfiles() {
-        CompMoveAAProfiles(3);
-        MulMoveAAProfiles(3);
+    void MoveCodonProfiles() {
+        CompMoveCodonProfiles(3);
+        MulMoveCodonProfiles(3);
     }
 
     //! MH move on amino-acid fitness profiles: additive compensated move on pairs
     //! of entries of the vector
-    double CompMoveAAProfiles(int nrep) {
-        MoveAA(1.0, 1, nrep);
-        MoveAA(0.1, 3, nrep);
+    double CompMoveCodonProfiles(int nrep) {
+        MoveCodon(1.0, 1, nrep);
+        MoveCodon(0.1, 3, nrep);
         return 1.0;
     }
 
     //! MH move on amino-acid fitness profiles: multiplicative move (using the
     //! Gamma representation of the Dirichlet)
-    double MulMoveAAProfiles(int nrep) {
-        MoveAAGamma(3.0, nrep);
-        MoveAAGamma(1.0, nrep);
+    double MulMoveCodonProfiles(int nrep) {
+        MoveCodonGamma(3.0, nrep);
+        MoveCodonGamma(1.0, nrep);
         return 1.0;
     }
 
     //! MH move on amino-acid fitness profiles: additive compensated move on pairs
     //! of entries of the vector
-    double MoveAA(double tuning, int n, int nrep) {
+    double MoveCodon(double tuning, int n, int nrep) {
         double nacc = 0;
         double ntot = 0;
-        double bk[Naa];
+        double bk[GetCodonStateSpace()->GetNstate()];
         for (int i = 0; i < Ncat; i++) {
             if (profile_occupancy->GetVal(i)) {
-                std::vector<double> &aa = (*componentaafitnessarray)[i];
+                std::vector<double> &codon = (*componentcodonfitnessarray)[i];
                 for (int rep = 0; rep < nrep; rep++) {
-                    for (int l = 0; l < Naa; l++) { bk[l] = aa[l]; }
-                    double deltalogprob = -AALogPrior(i) - PathSuffStatLogProb(i);
-                    double loghastings = Random::ProfileProposeMove(aa, Naa, tuning, n);
+                    for (int l = 0; l < GetCodonStateSpace()->GetNstate(); l++) {
+                        bk[l] = codon[l];
+                    }
+                    double deltalogprob = -CodonLogPrior(i) - PathSuffStatLogProb(i);
+                    double loghastings = Random::ProfileProposeMove(
+                        codon, GetCodonStateSpace()->GetNstate(), tuning, n);
                     deltalogprob += loghastings;
                     CorruptProfileCodonMatrices(i);
-                    deltalogprob += AALogPrior(i) + PathSuffStatLogProb(i);
+                    deltalogprob += CodonLogPrior(i) + PathSuffStatLogProb(i);
                     int accepted = (log(Random::Uniform()) < deltalogprob);
                     if (accepted) {
                         nacc++;
                     } else {
-                        for (int l = 0; l < Naa; l++) { aa[l] = bk[l]; }
+                        for (int l = 0; l < GetCodonStateSpace()->GetNstate(); l++) {
+                            codon[l] = bk[l];
+                        }
                         CorruptProfileCodonMatrices(i);
                     }
                     ntot++;
@@ -966,67 +975,68 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     }
 
     //! helper function: log density of 20 gammas
-    double GammaAALogPrior(
-        const std::vector<double> &x, const std::vector<double> &aacenter, double aaconc) {
+    double GammaCodonLogPrior(
+        const std::vector<double> &x, const std::vector<double> &codoncenter, double codonconc) {
         double total = 0;
-        for (int l = 0; l < Naa; l++) {
-            total += (aaconc * aacenter[l] - 1) * log(x[l]) - x[l] -
-                     Random::logGamma(aaconc * aacenter[l]);
+        for (int l = 0; l < GetCodonStateSpace()->GetNstate(); l++) {
+            total += (codonconc * codoncenter[l] - 1) * log(x[l]) - x[l] -
+                     Random::logGamma(codonconc * codoncenter[l]);
         }
         return total;
     }
 
     //! MH move on amino-acid fitness profiles: multiplicative move (using the
     //! Gamma representation of the Dirichlet)
-    double MoveAAGamma(double tuning, int nrep) {
+    double MoveCodonGamma(double tuning, int nrep) {
         double nacc = 0;
         double ntot = 0;
         for (int i = 0; i < Ncat; i++) {
             if (profile_occupancy->GetVal(i)) {
-                double aaconc = componentconcentrationarray->GetVal(i);
-                const std::vector<double> &aacenter = componentcenterarray->GetVal(i);
+                double codonconc = componentconcentrationarray->GetVal(i);
+                const std::vector<double> &codoncenter = componentcenterarray->GetVal(i);
 
-                std::vector<double> &aa = (*componentaafitnessarray)[i];
-                std::vector<double> x(Naa, 0);
-                double z = Random::sGamma(aaconc);
-                for (int l = 0; l < Naa; l++) { x[l] = z * aa[l]; }
+                std::vector<double> &codon = (*componentcodonfitnessarray)[i];
+                std::vector<double> x(GetCodonStateSpace()->GetNstate(), 0);
+                double z = Random::sGamma(codonconc);
+                for (int l = 0; l < GetCodonStateSpace()->GetNstate(); l++) { x[l] = z * codon[l]; }
 
                 double bkz = z;
                 std::vector<double> bkx = x;
-                std::vector<double> bkaa = aa;
+                std::vector<double> bkcodon = codon;
 
                 for (int rep = 0; rep < nrep; rep++) {
                     double deltalogprob =
-                        -GammaAALogPrior(x, aacenter, aaconc) - PathSuffStatLogProb(i);
+                        -GammaCodonLogPrior(x, codoncenter, codonconc) - PathSuffStatLogProb(i);
 
                     double loghastings = 0;
                     z = 0;
-                    for (int l = 0; l < Naa; l++) {
+                    for (int l = 0; l < GetCodonStateSpace()->GetNstate(); l++) {
                         double m = tuning * (Random::Uniform() - 0.5);
                         double e = exp(m);
                         x[l] *= e;
                         z += x[l];
                         loghastings += m;
                     }
-                    for (int l = 0; l < Naa; l++) {
-                        aa[l] = x[l] / z;
-                        if (aa[l] < 1e-50) { aa[l] = 1e-50; }
+                    for (int l = 0; l < GetCodonStateSpace()->GetNstate(); l++) {
+                        codon[l] = x[l] / z;
+                        if (codon[l] < 1e-50) { codon[l] = 1e-50; }
                     }
 
                     deltalogprob += loghastings;
 
                     CorruptProfileCodonMatrices(i);
 
-                    deltalogprob += GammaAALogPrior(x, aacenter, aaconc) + PathSuffStatLogProb(i);
+                    deltalogprob +=
+                        GammaCodonLogPrior(x, codoncenter, codonconc) + PathSuffStatLogProb(i);
 
                     int accepted = (log(Random::Uniform()) < deltalogprob);
                     if (accepted) {
                         nacc++;
-                        bkaa = aa;
+                        bkcodon = codon;
                         bkx = x;
                         bkz = z;
                     } else {
-                        aa = bkaa;
+                        codon = bkcodon;
                         x = bkx;
                         z = bkz;
                         CorruptProfileCodonMatrices(i);
@@ -1080,7 +1090,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         Permutation permut(Ncat);
         weight->LabelSwitchingMove(5, *profile_occupancy, permut);
         profile_alloc->Permute(permut);
-        componentaafitnessarray->Permute(permut);
+        componentcodonfitnessarray->Permute(permut);
     }
 
     //! Gibbs resample mixture weights (based on profile_occupancy suff stats)
@@ -1124,7 +1134,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     //! base mixture
     void CollectBaseSuffStat() {
         basesuffstatarray->Clear();
-        componentaafitnessarray->AddSuffStat(*basesuffstatarray, *componentalloc);
+        componentcodonfitnessarray->AddSuffStat(*basesuffstatarray, *componentalloc);
     }
 
     //! MCMC module for moving the center parameters of the components of the the
@@ -1132,20 +1142,21 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     double MoveBaseCenters(double tuning, int n) {
         double nacc = 0;
         double ntot = 0;
-        std::vector<double> bk(Naa, 0);
+        std::vector<double> bk(GetCodonStateSpace()->GetNstate(), 0);
         for (int k = 0; k < baseNcat; k++) {
             if (baseprofile_occupancy->GetVal(k)) {
-                std::vector<double> &aa = (*basecenterarray)[k];
-                bk = aa;
+                std::vector<double> &codon = (*basecenterarray)[k];
+                bk = codon;
                 double deltalogprob = -BaseLogProb(k);
-                double loghastings = Random::ProfileProposeMove(aa, Naa, tuning, n);
+                double loghastings =
+                    Random::ProfileProposeMove(codon, GetCodonStateSpace()->GetNstate(), tuning, n);
                 deltalogprob += loghastings;
                 deltalogprob += BaseLogProb(k);
                 int accepted = (log(Random::Uniform()) < deltalogprob);
                 if (accepted) {
                     nacc++;
                 } else {
-                    aa = bk;
+                    codon = bk;
                 }
                 ntot++;
             }
@@ -1213,7 +1224,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         double max = 0;
         const std::vector<double> &w = baseweight->GetArray();
         for (int i = 0; i < baseNcat; i++) {
-            double tmp = Random::logDirichletDensity(componentaafitnessarray->GetVal(cat),
+            double tmp = Random::logDirichletDensity(componentcodonfitnessarray->GetVal(cat),
                 basecenterarray->GetVal(i), baseconcentrationarray->GetVal(i));
             postprob[i] = tmp;
             if ((!i) || (max < tmp)) { max = tmp; }
@@ -1400,7 +1411,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     }
 
     //! return mean entropy of amino-acd fitness profiles
-    double GetMeanAAEntropy() const { return componentaafitnessarray->GetMeanEntropy(); }
+    double GetMeanAAEntropy() const { return componentcodonfitnessarray->GetMeanEntropy(); }
 
     //! return mean of concentration parameters of base distribution
     double GetMeanComponentAAConcentration() const {
@@ -1452,10 +1463,10 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return mean;
     }
 
-    const std::vector<double> &GetProfile(int i) const { return siteaafitnessarray->GetVal(i); }
+    const std::vector<double> &GetProfile(int i) const { return sitecodonfitnessarray->GetVal(i); }
 
     void ToStream(std::ostream &os) const {
-        os << "AAMutSelMultipleOmega" << '\t';
+        os << "CodonMutSelMultipleOmega" << '\t';
         os << datafile << '\t' << treefile << '\t' << profilesfile << '\t';
         os << delta_omega_array_file << '\t';
         os << omegaNcat << '\t';
@@ -1470,8 +1481,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     CodonMutSelMultipleOmegaModel(std::istream &is) {
         std::string model_name;
         is >> model_name;
-        if (model_name != "AAMutSelMultipleOmega") {
-            std::cerr << "Expected AAMutSelMultipleOmega for model name, got " << model_name
+        if (model_name != "CodonMutSelMultipleOmega") {
+            std::cerr << "Expected CodonMutSelMultipleOmega for model name, got " << model_name
                       << "\n";
             exit(1);
         }

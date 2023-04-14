@@ -10,9 +10,9 @@
 using namespace std;
 using namespace TCLAP;
 
-class ReadCodonMutSelDSBDPOmegaArgParse : public ReadArgParse {
+class ReadCodonMutSelMultipleOmegaArgParse : public ReadArgParse {
   public:
-    explicit ReadCodonMutSelDSBDPOmegaArgParse(CmdLine &cmd) : ReadArgParse(cmd) {}
+    explicit ReadCodonMutSelMultipleOmegaArgParse(CmdLine &cmd) : ReadArgParse(cmd) {}
 
     SwitchArg nuc{"n", "nuc", "Mean posterior nucleotide matrix.", cmd};
     ValueArg<string> confidence_interval{"c", "confidence_interval",
@@ -35,7 +35,7 @@ class ReadCodonMutSelDSBDPOmegaArgParse : public ReadArgParse {
 
 int main(int argc, char *argv[]) {
     CmdLine cmd{"CodonMutSelMultipleOmega", ' ', "0.1"};
-    ReadCodonMutSelDSBDPOmegaArgParse read_args(cmd);
+    ReadCodonMutSelMultipleOmegaArgParse read_args(cmd);
     cmd.parse(argc, argv);
 
     string chain_name = read_args.GetChainName();
@@ -75,12 +75,16 @@ int main(int argc, char *argv[]) {
         cerr << '\n';
 
         ofstream os((chain_name + ".siteprofiles").c_str());
-        os << "site\tA\tC\tD\tE\tF\tG\tH\tI\tK\tL\tM\tN\tP\tQ\tR\tS\tT\tV\tW\tY\n";
+
+        os << "site\tTTT\tTTC\tTTA\tTTG\tTCT\tTCC\tTCA\tTCG\tTAT\tTAC\tTGT\tTGC\tTGG\tCTT\tCTC\tCTA"
+              "\tCTG\tCCT\tCCC\tCCA\tCCG\tCAT\tCAC\tCAA\tCAG\tCGT\tCGC\tCGA\tCGG\tATT\tATC\tATA\tAT"
+              "G\tACT\tACC\tACA\tACG\tAAT\tAAC\tAAA\tAAG\tAGT\tAGC\tAGA\tAGG\tGTT\tGTC\tGTA\tGTG\tG"
+              "CT\tGCC\tGCA\tGCG\tGAT\tGAC\tGAA\tGAG\tGGT\tGGC\tGGA\tGGG\n";
         for (int i = 0; i < model.GetNsite(); i++) {
             os << i + 1;
-            for (auto &aa : sitestat[i]) {
-                aa /= size;
-                os << '\t' << aa;
+            for (auto &codon : sitestat[i]) {
+                codon /= size;
+                os << '\t' << codon;
             }
             os << '\n';
         }

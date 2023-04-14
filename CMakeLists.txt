@@ -38,6 +38,7 @@ include_directories("utils")
 add_library(tree_lib STATIC "src/tree/implem.cpp")
 
 set(BAYESCODE_LIB
+        src/lib/CodonMutSelOmegaCodonSubMatrix.cpp
         src/lib/AAMutSelOmegaCodonSubMatrix.cpp
         src/lib/AAMutSelNeCodonMatrixBidimArray.cpp
         src/lib/BranchSitePath.cpp

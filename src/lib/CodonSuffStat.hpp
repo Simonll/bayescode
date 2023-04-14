@@ -265,8 +265,15 @@ class OmegaPathSuffStat : public PoissonSuffStat {
         }
     }
 
+    void AddSuffStat(const Selector<CodonMutSelOmegaCodonSubMatrix> &codonsubmatrixarray,
+        const Selector<PathSuffStat> &pathsuffstatarray) {
+        for (int i = 0; i < codonsubmatrixarray.GetSize(); i++) {
+            AddSuffStat(codonsubmatrixarray.GetVal(i), pathsuffstatarray.GetVal(i));
+        }
+    }
+
     double GetLogProb(double omega) const {
-        if (count == 0 && omega == 0.0){
+        if (count == 0 && omega == 0.0) {
             return -std::numeric_limits<double>::infinity();
         } else {
             return count * log(omega) - beta * omega;
@@ -332,6 +339,13 @@ class OmegaPathSuffStatArray : public SimpleArray<OmegaPathSuffStat>,
     //! compute omega suff stats and do a member-wise addition -- for
     //! mutation-selection codon matrices
     void AddSuffStat(const Selector<AAMutSelOmegaCodonSubMatrix> &codonsubmatrixarray,
+        const Selector<PathSuffStat> &pathsuffstatarray) {
+        for (int i = 0; i < GetSize(); i++) {
+            (*this)[i].AddSuffStat(codonsubmatrixarray.GetVal(i), pathsuffstatarray.GetVal(i));
+        }
+    }
+
+    void AddSuffStat(const Selector<CodonMutSelOmegaCodonSubMatrix> &codonsubmatrixarray,
         const Selector<PathSuffStat> &pathsuffstatarray) {
         for (int i = 0; i < GetSize(); i++) {
             (*this)[i].AddSuffStat(codonsubmatrixarray.GetVal(i), pathsuffstatarray.GetVal(i));
