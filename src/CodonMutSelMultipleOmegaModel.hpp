@@ -411,7 +411,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         baseconchyperinvshape = 1.0;
         baseconcentrationarray = new IIDGamma(baseNcat, baseconchypermean, baseconchyperinvshape);
         for (int k = 0; k < baseNcat; k++) {
-            (*baseconcentrationarray)[k] = (double)GetCodonStateSpace()->GetNstate();
+            (*baseconcentrationarray)[k] = GetCodonStateSpace()->GetNstate();
         }
         if (basemin == 1) { (*baseconcentrationarray)[0] = 1.0; }
         // suff stats for component aa fitness arrays
@@ -488,7 +488,6 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         // collect omegapathsuffstatarray)
         sitecodonsubmatrixarray = new DoubleMixtureSelector<CodonMutSelOmegaCodonSubMatrix>(
             componentcodonmatrixbidimarray, profile_alloc, omega_alloc);
-
         phyloprocess =
             new PhyloProcess(tree.get(), codondata, branchlength, nullptr, sitesubmatrixarray);
         phyloprocess->Unfold();
@@ -504,7 +503,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     template <class Info>
     void declare_interface(Info info) {
-        if (blmode < 2) { model_node(info, "branchlength", *branchlength); }
+        // if (blmode < 2) { model_node(info, "branchlength", *branchlength); }
         if (nucmode < 2) {
             model_node(info, "nucrelrate", nucrelrate);
             model_node(info, "nucstat", nucstat);

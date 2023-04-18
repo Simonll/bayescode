@@ -25,8 +25,7 @@ void CodonMutSelOmegaCodonSubMatrix::ComputeArray(int i) const {
 
         Q(i, j) = (*NucMatrix)(a, b);
 
-        double deltaS = GetLogFitness(GetCodonStateSpace()->Translation(j)) -
-                        GetLogFitness(GetCodonStateSpace()->Translation(i));
+        double deltaS = GetLogFitness(j) - GetLogFitness(i);
         if ((fabs(deltaS)) < 1e-30) {
             Q(i, j) *= 1 + deltaS / 2;
         } else if (deltaS > 50) {

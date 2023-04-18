@@ -25,21 +25,21 @@ class CodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
     //! positive real parameter omega (=1 in the standard model).
     CodonMutSelOmegaCodonSubMatrix(const CodonStateSpace *instatespace,
         const SubMatrix *inNucMatrix, const std::vector<double> &incodon, double inomega,
-        double inNe, bool innormalise = false)
+        bool innormalise = false)
         : SubMatrix(instatespace->GetNstate(), innormalise),
           CodonSubMatrix(instatespace, innormalise),
           NucCodonSubMatrix(instatespace, inNucMatrix, innormalise),
           OmegaCodonSubMatrix(instatespace, inomega, innormalise),
           fitnesses(incodon.size(), 0.0),
           logfitnesses(incodon.size(), 1.0 / incodon.size()),
-          codon(incodon),
-          Ne(inNe) {}
+          codon(incodon) {}
+    //   Ne(inNe) {}
 
     //! \brief access by copy to fitness of a given amino-acid
     //!
     //! Note: to avoid numerical errors, this function adds 1e-8.
     double GetFitness(int c) const {
-        assert(std::abs((exp(Ne * log(codon[c])) + 1e-8) - fitnesses[c]) < 1e-6);
+        assert(std::abs((exp(log(codon[c])) + 1e-8) - fitnesses[c]) < 1e-6);
         return fitnesses[c];
     }
 
@@ -51,16 +51,16 @@ class CodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
     std::tuple<double, double> GetFlowDNDS() const;
     double GetPredictedDNDS() const;
 
-    void UpdateNe(double inNe) {
-        Ne = inNe;
-        CorruptMatrix();
-    }
+    // void UpdateNe(double inNe) {
+    //     Ne = inNe;
+    //     CorruptMatrix();
+    // }
 
     void CorruptMatrixNoFitnessRecomput() { SubMatrix::CorruptMatrix(); }
 
     void CorruptMatrix() override {
         for (size_t c{0}; c < codon.size(); c++) {
-            fitnesses[c] = exp(Ne * log(codon[c])) + 1e-8;
+            fitnesses[c] = exp(log(codon[c])) + 1e-8;
             logfitnesses[c] = log(fitnesses[c]);
         }
         SubMatrix::CorruptMatrix();
@@ -76,5 +76,5 @@ class CodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
 
     // data members
     const std::vector<double> &codon;
-    double Ne;
+    // double Ne;
 };
