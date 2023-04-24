@@ -8,7 +8,8 @@ using namespace std;
 
 PhyloProcess::PhyloProcess(const Tree *intree, const SequenceAlignment *indata,
     const BranchSelector<double> *inbranchlength, const Selector<double> *insiterate,
-    PolyProcess *inpolyprocess) : taxon_map(intree, indata->GetTaxonSet()) {
+    PolyProcess *inpolyprocess)
+    : taxon_map(intree, indata->GetTaxonSet()) {
     tree = intree;
     data = indata;
     Nstate = data->GetNstate();
@@ -439,12 +440,10 @@ void PhyloProcess::DrawSites(double fraction) {
 
 void PhyloProcess::ResampleSub() {
     pruningchrono.Start();
-
     for (int i = 0; i < GetNsite(); i++) {
         if (sitearray[i] != 0) { ResampleState(i); }
     }
     pruningchrono.Stop();
-
     resamplechrono.Start();
     for (int i = 0; i < GetNsite(); i++) {
         if (sitearray[i] != 0) { ResampleSub(GetRoot(), i); }
@@ -649,7 +648,8 @@ void PhyloProcess::AddPolySuffStat(BidimArray<PolySuffStat> &suffstatbidimarray)
     assert(polyprocess != nullptr);
     for (int taxon = 0; taxon < GetNtaxa(); taxon++) {
         for (int site = 0; site < GetNsite(); site++) {
-            suffstatbidimarray(taxon, site).IncrementPolyCount(
+            suffstatbidimarray(taxon, site)
+                .IncrementPolyCount(
                     polyprocess->GetDerivedTuple(taxon, site, GetPathState(taxon, site)));
         }
     }
@@ -688,23 +688,29 @@ void PhyloProcess::RecursiveAddPathSuffStat(Tree::NodeIndex from,
     if (tree->is_root(from)) {
         LocalAddPathSuffStat(from, suffstatbidimarray, 0);
     } else {
-        LocalAddPathSuffStat(from, suffstatbidimarray, branchalloc.GetVal(tree->branch_index(from)));
+        LocalAddPathSuffStat(
+            from, suffstatbidimarray, branchalloc.GetVal(tree->branch_index(from)));
     }
-    for (auto c : tree->children(from)) { RecursiveAddPathSuffStat(c, suffstatbidimarray, branchalloc); }
+    for (auto c : tree->children(from)) {
+        RecursiveAddPathSuffStat(c, suffstatbidimarray, branchalloc);
+    }
 }
 
-void PhyloProcess::AddPathSuffStat(BidimArray<PathSuffStat> &suffstatbidimarray, Array<PathSuffStat> &rootsuffstatarray) const {
+void PhyloProcess::AddPathSuffStat(
+    BidimArray<PathSuffStat> &suffstatbidimarray, Array<PathSuffStat> &rootsuffstatarray) const {
     RecursiveAddPathSuffStat(GetRoot(), suffstatbidimarray, rootsuffstatarray);
 }
 
 void PhyloProcess::RecursiveAddPathSuffStat(Tree::NodeIndex from,
-                                            BidimArray<PathSuffStat> &suffstatbidimarray, Array<PathSuffStat> &rootsuffstatarray) const {
+    BidimArray<PathSuffStat> &suffstatbidimarray, Array<PathSuffStat> &rootsuffstatarray) const {
     if (tree->is_root(from)) {
         LocalAddPathSuffStat(from, rootsuffstatarray);
     } else {
         LocalAddPathSuffStat(from, suffstatbidimarray, tree->branch_index(from));
     }
-    for (auto c : tree->children(from)) { RecursiveAddPathSuffStat(c, suffstatbidimarray, rootsuffstatarray); }
+    for (auto c : tree->children(from)) {
+        RecursiveAddPathSuffStat(c, suffstatbidimarray, rootsuffstatarray);
+    }
 }
 
 

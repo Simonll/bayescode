@@ -265,8 +265,15 @@ class OmegaPathSuffStat : public PoissonSuffStat {
         }
     }
 
+    void AddSuffStat(const Selector<AACodonMutSelOmegaCodonSubMatrix> &codonsubmatrixarray,
+        const Selector<PathSuffStat> &pathsuffstatarray) {
+        for (int i = 0; i < codonsubmatrixarray.GetSize(); i++) {
+            AddSuffStat(codonsubmatrixarray.GetVal(i), pathsuffstatarray.GetVal(i));
+        }
+    }
+
     double GetLogProb(double omega) const {
-        if (count == 0 && omega == 0.0){
+        if (count == 0 && omega == 0.0) {
             return -std::numeric_limits<double>::infinity();
         } else {
             return count * log(omega) - beta * omega;
@@ -338,6 +345,12 @@ class OmegaPathSuffStatArray : public SimpleArray<OmegaPathSuffStat>,
         }
     }
 
+    void AddSuffStat(const Selector<AACodonMutSelOmegaCodonSubMatrix> &codonsubmatrixarray,
+        const Selector<PathSuffStat> &pathsuffstatarray) {
+        for (int i = 0; i < GetSize(); i++) {
+            (*this)[i].AddSuffStat(codonsubmatrixarray.GetVal(i), pathsuffstatarray.GetVal(i));
+        }
+    }
     //! \brief add suffstatarray given as argument to this array based on the
     //! allocations provided as the second argument (mixture models)
     //!

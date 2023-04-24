@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AACodonMutSelOmegaCodonSubMatrix.hpp"
 #include "AAMutSelOmegaCodonSubMatrix.hpp"
 #include "Array.hpp"
 #include "CodonSubMatrix.hpp"
