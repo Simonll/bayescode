@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AAMutSelOmegaCodonSubMatrix.hpp"
+#include "AAMutSeldSCodonSubMatrix.hpp"
 #include "BidimArray.hpp"
 
 /**

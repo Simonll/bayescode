@@ -12,3 +12,6 @@ _aamutsel/
 _mutselomega/
 .vscode/
 *.profraw
+build/*
+build/.*
+build
