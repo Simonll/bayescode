@@ -1,6 +1,6 @@
 #include <cmath>
 #include <fstream>
-#include "AAMutSelMultipleOmegaModel.hpp"
+#include "AAMutSelMultipledSModel.hpp"
 #include "components/ChainCheckpoint.hpp"
 #include "components/ChainDriver.hpp"
 #include "components/ConsoleLogger.hpp"
@@ -31,8 +31,10 @@ class AAMutselArgParse : public BaseArgParse {
         cmd, false};
     SwitchArg freeomega{"", "freeomega",
         "ω is allowed to vary (default ω is 1.0). "
-        "Combined with the option `flatfitness`, we obtain the classical, ω-based codon model (Muse & Gaut). "
-        "Without the option `flatfitness`, we obtain the mutation-selection codon model with a multiplicative factor (ω⁎).",
+        "Combined with the option `flatfitness`, we obtain the classical, ω-based codon model "
+        "(Muse & Gaut). "
+        "Without the option `flatfitness`, we obtain the mutation-selection codon model with a "
+        "multiplicative factor (ω⁎).",
         cmd, false};
     ValueArg<int> omegancat{
         "", "omegancat", "Number of components for ω (finite mixture).", false, 1, "int", cmd};

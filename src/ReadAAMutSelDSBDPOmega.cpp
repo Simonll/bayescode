@@ -10,9 +10,9 @@
 using namespace std;
 using namespace TCLAP;
 
-class ReadAAMutSelDSBDPOmegaArgParse : public ReadArgParse {
+class ReadAAMutSelDSBDPdSArgParse : public ReadArgParse {
   public:
-    explicit ReadAAMutSelDSBDPOmegaArgParse(CmdLine &cmd) : ReadArgParse(cmd) {}
+    explicit ReadAAMutSelDSBDPdSArgParse(CmdLine &cmd) : ReadArgParse(cmd) {}
     TCLAP::ValueArg<string> profiles{"o", "profiles",
         "Output profiles name if desired (otherwise given by {chain_name}.siteprofiles)", false, "",
         "string", cmd};
@@ -30,7 +30,7 @@ class ReadAAMutSelDSBDPOmegaArgParse : public ReadArgParse {
 
 int main(int argc, char *argv[]) {
     CmdLine cmd{"AAMutSelDSBDPOmega", ' ', "0.1"};
-    ReadAAMutSelDSBDPOmegaArgParse read_args(cmd);
+    ReadAAMutSelDSBDPdSArgParse read_args(cmd);
     cmd.parse(argc, argv);
 
     std::string chain_name = read_args.GetChainName();

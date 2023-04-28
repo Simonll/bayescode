@@ -1,6 +1,6 @@
 #include <cmath>
 #include <fstream>
-#include "AAMutSelMultipleOmegaModel.hpp"
+#include "AAMutSelMultipledSModel.hpp"
 #include "components/ChainDriver.hpp"
 #include "components/ChainReader.hpp"
 #include "components/ReadArgParse.hpp"
@@ -10,9 +10,9 @@
 using namespace std;
 using namespace TCLAP;
 
-class ReadAAMutSelDSBDPOmegaArgParse : public ReadArgParse {
+class ReadAAMutSelDSBDPdSArgParse : public ReadArgParse {
   public:
-    explicit ReadAAMutSelDSBDPOmegaArgParse(CmdLine &cmd) : ReadArgParse(cmd) {}
+    explicit ReadAAMutSelDSBDPdSArgParse(CmdLine &cmd) : ReadArgParse(cmd) {}
 
     SwitchArg nuc{"n", "nuc", "Mean posterior nucleotide matrix.", cmd};
     ValueArg<string> confidence_interval{"c", "confidence_interval",
@@ -35,7 +35,7 @@ class ReadAAMutSelDSBDPOmegaArgParse : public ReadArgParse {
 
 int main(int argc, char *argv[]) {
     CmdLine cmd{"AAMutSelMultipleOmega", ' ', "0.1"};
-    ReadAAMutSelDSBDPOmegaArgParse read_args(cmd);
+    ReadAAMutSelDSBDPdSArgParse read_args(cmd);
     cmd.parse(argc, argv);
 
     string chain_name = read_args.GetChainName();

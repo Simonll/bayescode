@@ -1,7 +1,7 @@
+#include "AAMutSeldSCodonSubMatrix.hpp"
 #include <tuple>
-#include "AAMutSelOmegaCodonSubMatrix.hpp"
 
-void AAMutSelOmegaCodonSubMatrix::ComputeStationary() const {
+void AAMutSeldSCodonSubMatrix::ComputeStationary() const {
     // compute stationary probabilities
     double total = 0;
     for (int i = 0; i < Nstate; i++) {
@@ -17,7 +17,7 @@ void AAMutSelOmegaCodonSubMatrix::ComputeStationary() const {
     for (int i = 0; i < Nstate; i++) { mStationary[i] /= total; }
 }
 
-void AAMutSelOmegaCodonSubMatrix::ComputeArray(int i) const {
+void AAMutSeldSCodonSubMatrix::ComputeArray(int i) const {
     double total = 0;
     for (auto j : statespace->GetNeighbors(i)) {
         int pos = GetDifferingPosition(i, j);
@@ -53,7 +53,7 @@ void AAMutSelOmegaCodonSubMatrix::ComputeArray(int i) const {
     assert(total >= 0);
 }
 
-std::tuple<double, double> AAMutSelOmegaCodonSubMatrix::GetFlowDNDS() const {
+std::tuple<double, double> AAMutSeldSCodonSubMatrix::GetFlowDNDS() const {
     UpdateStationary();
     double totom = 0;
     double totweight = 0;
@@ -92,7 +92,7 @@ std::tuple<double, double> AAMutSelOmegaCodonSubMatrix::GetFlowDNDS() const {
     return std::make_tuple(totom, totweight);
 }
 
-double AAMutSelOmegaCodonSubMatrix::GetPredictedDNDS() const {
+double AAMutSeldSCodonSubMatrix::GetPredictedDNDS() const {
     double dn = 0, dn0 = 0;
     std::tie(dn, dn0) = GetFlowDNDS();
     return dn / dn0;

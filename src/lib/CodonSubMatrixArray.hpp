@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AAMutSelOmegaCodonSubMatrix.hpp"
+#include "AAMutSeldSCodonSubMatrix.hpp"
 #include "Array.hpp"
 #include "CodonSubMatrix.hpp"
 #include "SubMatrix.hpp"
@@ -92,12 +92,12 @@ class MGOmegaCodonSubMatrixArray : public Array<SubMatrix>, public Array<MGOmega
  * mutation-selection matrices accordingly.
  */
 
-class AAMutSelOmegaCodonSubMatrixArray : public Array<SubMatrix>,
-                                         public Array<AAMutSelOmegaCodonSubMatrix> {
+class AAMutSeldSCodonSubMatrixArray : public Array<SubMatrix>,
+                                      public Array<AAMutSeldSCodonSubMatrix> {
   public:
     //! constructor with a nucleotide matrix, an array of amino-acid fitness
     //! profiles and a single omega value (for all matrices)
-    AAMutSelOmegaCodonSubMatrixArray(const CodonStateSpace *incodonstatespace,
+    AAMutSeldSCodonSubMatrixArray(const CodonStateSpace *incodonstatespace,
         const SubMatrix *innucmatrix, const Selector<std::vector<double>> *inaafitnessarray,
         double inomega)
         : codonstatespace(incodonstatespace),
@@ -112,7 +112,7 @@ class AAMutSelOmegaCodonSubMatrixArray : public Array<SubMatrix>,
     //! constructor with a nucleotide matrix, an array of amino-acid fitness
     //! profiles and an array of omega value (one for each entry of the matrix
     //! array)
-    AAMutSelOmegaCodonSubMatrixArray(const CodonStateSpace *incodonstatespace,
+    AAMutSeldSCodonSubMatrixArray(const CodonStateSpace *incodonstatespace,
         const SubMatrix *innucmatrix, const Selector<std::vector<double>> *inaafitnessarray,
         const Selector<double> *inomegaarray)
         : codonstatespace(incodonstatespace),
@@ -121,14 +121,14 @@ class AAMutSelOmegaCodonSubMatrixArray : public Array<SubMatrix>,
           omegaarray(inomegaarray),
           matrixarray(inomegaarray->GetSize()) {
         if (aafitnessarray->GetSize() != omegaarray->GetSize()) {
-            std::cerr << "error in constructor of AAMutSelOmegaCodonSubMatrixArray: "
+            std::cerr << "error in constructor of AAMutSeldSCodonSubMatrixArray: "
                          "arrays of aafitness and omega values should be of same size\n";
             exit(1);
         }
         Create();
     }
 
-    ~AAMutSelOmegaCodonSubMatrixArray() { Delete(); }
+    ~AAMutSeldSCodonSubMatrixArray() { Delete(); }
 
     //! \brief set omega to new value
     //!
@@ -136,7 +136,7 @@ class AAMutSelOmegaCodonSubMatrixArray : public Array<SubMatrix>,
     //! makes an error (with exit) if this is not the case.
     void SetOmega(double inomega) {
         if (omegaarray) {
-            std::cerr << "error in AAMutSelOmegaCodonSubMatrixArray::SetOmega\n";
+            std::cerr << "error in AAMutSeldSCodonSubMatrixArray::SetOmega\n";
             exit(1);
         }
         omega = inomega;
@@ -145,9 +145,9 @@ class AAMutSelOmegaCodonSubMatrixArray : public Array<SubMatrix>,
     //! return array size
     int GetSize() const { return aafitnessarray->GetSize(); }
     //! const access to matrix i
-    const AAMutSelOmegaCodonSubMatrix &GetVal(int i) const { return *matrixarray[i]; }
+    const AAMutSeldSCodonSubMatrix &GetVal(int i) const { return *matrixarray[i]; }
     //! non-const access to matrix i
-    AAMutSelOmegaCodonSubMatrix &operator[](int i) { return *matrixarray[i]; }
+    AAMutSeldSCodonSubMatrix &operator[](int i) { return *matrixarray[i]; }
 
     //! const acess to nucleotide matrix
     const SubMatrix &GetNucMatrix() const { return *nucmatrix; }
@@ -191,10 +191,10 @@ class AAMutSelOmegaCodonSubMatrixArray : public Array<SubMatrix>,
     void Create() {
         for (int i = 0; i < GetSize(); i++) {
             if (omegaarray) {
-                matrixarray[i] = new AAMutSelOmegaCodonSubMatrix(codonstatespace, nucmatrix,
+                matrixarray[i] = new AAMutSeldSCodonSubMatrix(codonstatespace, nucmatrix,
                     aafitnessarray->GetVal(i), omegaarray->GetVal(i), 1.0);
             } else {
-                matrixarray[i] = new AAMutSelOmegaCodonSubMatrix(
+                matrixarray[i] = new AAMutSeldSCodonSubMatrix(
                     codonstatespace, nucmatrix, aafitnessarray->GetVal(i), omega, 1.0);
             }
         }
@@ -209,5 +209,5 @@ class AAMutSelOmegaCodonSubMatrixArray : public Array<SubMatrix>,
     const Selector<std::vector<double>> *aafitnessarray;
     double omega;
     const Selector<double> *omegaarray;
-    std::vector<AAMutSelOmegaCodonSubMatrix *> matrixarray;
+    std::vector<AAMutSeldSCodonSubMatrix *> matrixarray;
 };

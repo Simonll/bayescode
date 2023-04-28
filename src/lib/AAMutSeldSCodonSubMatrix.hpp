@@ -17,13 +17,13 @@
  * deviations from expected non-syn rate under the standard mut-sel model).
  */
 
-class AAMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
+class AAMutSeldSCodonSubMatrix : public virtual NucCodonSubMatrix,
                                     public virtual OmegaCodonSubMatrix {
   public:
     //! constructor, parameterized by a codon state space (genetic code), a
     //! nucleotide mutation matrix, a 20-vector of amino-acid fitnesss, and a
     //! positive real parameter omega (=1 in the standard model).
-    AAMutSelOmegaCodonSubMatrix(const CodonStateSpace *instatespace, const SubMatrix *inNucMatrix,
+    AAMutSeldSCodonSubMatrix(const CodonStateSpace *instatespace, const SubMatrix *inNucMatrix,
         const std::vector<double> &inaa, double inomega, double inNe, bool innormalise = false)
         : SubMatrix(instatespace->GetNstate(), innormalise),
           CodonSubMatrix(instatespace, innormalise),

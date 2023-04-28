@@ -258,7 +258,7 @@ class OmegaPathSuffStat : public PoissonSuffStat {
     //! This method assumes that each codonpathsuffstat given by the second array
     //! has a potentially different codon matrix, such as specified by the first
     //! array.
-    void AddSuffStat(const Selector<AAMutSelOmegaCodonSubMatrix> &codonsubmatrixarray,
+    void AddSuffStat(const Selector<AAMutSeldSCodonSubMatrix> &codonsubmatrixarray,
         const Selector<PathSuffStat> &pathsuffstatarray) {
         for (int i = 0; i < codonsubmatrixarray.GetSize(); i++) {
             AddSuffStat(codonsubmatrixarray.GetVal(i), pathsuffstatarray.GetVal(i));
@@ -331,7 +331,7 @@ class OmegaPathSuffStatArray : public SimpleArray<OmegaPathSuffStat>,
 
     //! compute omega suff stats and do a member-wise addition -- for
     //! mutation-selection codon matrices
-    void AddSuffStat(const Selector<AAMutSelOmegaCodonSubMatrix> &codonsubmatrixarray,
+    void AddSuffStat(const Selector<AAMutSeldSCodonSubMatrix> &codonsubmatrixarray,
         const Selector<PathSuffStat> &pathsuffstatarray) {
         for (int i = 0; i < GetSize(); i++) {
             (*this)[i].AddSuffStat(codonsubmatrixarray.GetVal(i), pathsuffstatarray.GetVal(i));

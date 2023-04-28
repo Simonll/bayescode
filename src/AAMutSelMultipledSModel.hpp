@@ -231,7 +231,7 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
 
     // this one is used by PhyloProcess: has to be a Selector<SubMatrix>
     DoubleMixtureSelector<SubMatrix> *sitesubmatrixarray;
-    DoubleMixtureSelector<AAMutSelOmegaCodonSubMatrix> *sitecodonsubmatrixarray;
+    DoubleMixtureSelector<AAMutSeldSCodonSubMatrix> *sitecodonsubmatrixarray;
 
     MixtureSelector<std::vector<double>> *siteaafitnessarray;
 
@@ -482,7 +482,7 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
 
         // Bidimselector, specifying which codon matrix should be used for each site (needed to
         // collect omegapathsuffstatarray)
-        sitecodonsubmatrixarray = new DoubleMixtureSelector<AAMutSelOmegaCodonSubMatrix>(
+        sitecodonsubmatrixarray = new DoubleMixtureSelector<AAMutSeldSCodonSubMatrix>(
             componentcodonmatrixbidimarray, profile_alloc, omega_alloc);
 
         phyloprocess =
@@ -1446,7 +1446,7 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
     double GetPredictedEffectivedNdS() const {
         double mean = 0;
         for (int i = 0; i < GetNsite(); i++) {
-            mean += GetSiteOmega(i) * sitecodonsubmatrixarray->GetVal(i).GetPredictedDNDS();
+            mean += sitecodonsubmatrixarray->GetVal(i).GetPredictedDNDS() / GetSiteOmega(i);
         }
         mean /= GetNsite();
         return mean;

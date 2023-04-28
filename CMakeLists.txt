@@ -2,33 +2,36 @@ cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
 project(BayesCode CXX)
 
 # Compilation options
-option(COVERAGE_MODE "For coverage mode using g++ " OFF) #OFF by default
-option(TINY "Compiling a subset of programs without MPI " OFF) #OFF by default
-option(DEBUG_MODE "Debug mode (with asserts and such) " OFF) #OFF by default
+option(COVERAGE_MODE "For coverage mode using g++ " OFF) # OFF by default
+option(TINY "Compiling a subset of programs without MPI " OFF) # OFF by default
+option(DEBUG_MODE "Debug mode (with asserts and such) " OFF) # OFF by default
 set(ALWAYSON_CXX_FLAGS "--std=c++14 -Wall -Wextra -Wno-unused-parameter -Wfatal-errors ")
-if (COVERAGE_MODE)
+
+if(COVERAGE_MODE)
     set(CMAKE_CXX_FLAGS "-O0 -fprofile-arcs -ftest-coverage ${ALWAYSON_CXX_FLAGS}") # coverage mode
     message("-- INFO: Compiling in coverage mode.\n-- INFO: flags are: " ${CMAKE_CXX_FLAGS})
-else ()
-    if (DEBUG_MODE)
+else()
+    if(DEBUG_MODE)
         set(CMAKE_CXX_FLAGS "-O2 -g ${ALWAYSON_CXX_FLAGS}") # debug mode
         message("-- INFO: Compiling in debug mode.\n-- INFO: flags are: " ${CMAKE_CXX_FLAGS})
-    else ()
+    else()
         set(CMAKE_CXX_FLAGS "-O3 -DNDEBUG ${ALWAYSON_CXX_FLAGS}") # release mode
         message("-- INFO: Compiling in release mode.\n-- INFO: flags are: " ${CMAKE_CXX_FLAGS})
-    endif (DEBUG_MODE)
-endif (COVERAGE_MODE)
+    endif(DEBUG_MODE)
+endif(COVERAGE_MODE)
+
 unset(COVERAGE_MODE CACHE)
 unset(DEBUG_MODE CACHE)
 
-if (TINY)
+if(TINY)
     message("-- INFO: Compiling without MPI.")
-else ()
+else()
     message("-- INFO: Compiling with MPI.")
+
     # MPI
     find_package(MPI REQUIRED)
     include_directories(${MPI_INCLUDE_PATH})
-endif (TINY)
+endif(TINY)
 
 include_directories("src")
 include_directories("src/lib")
@@ -38,46 +41,51 @@ include_directories("utils")
 add_library(tree_lib STATIC "src/tree/implem.cpp")
 
 set(BAYESCODE_LIB
-        src/lib/AAMutSelOmegaCodonSubMatrix.cpp
-        src/lib/AAMutSelNeCodonMatrixBidimArray.cpp
-        src/lib/BranchSitePath.cpp
-        src/lib/Chain.cpp
-        src/lib/Chrono.cpp
-        src/lib/CodonSequenceAlignment.cpp
-        src/lib/CodonStateSpace.cpp
-        src/lib/CodonSubMatrix.cpp
-        src/lib/GTRSubMatrix.cpp
-        src/lib/PhyloProcess.cpp
-        src/lib/Random.cpp
-        src/lib/RandomGeneSample.cpp
-        src/lib/Sample.cpp
-        src/lib/SequenceAlignment.cpp
-        src/lib/StateSpace.cpp
-        src/lib/SubMatrix.cpp
-        src/lib/TaxonSet.cpp
-        src/lib/Chronogram.cpp
-        src/lib/MultivariateProcess.cpp
-        src/lib/ScaledMutationRateCompound.cpp
-        src/lib/ScatterSuffStat.cpp
-        src/lib/PolyData.cpp
-        src/lib/PolyProcess.cpp
-        src/lib/PolySuffStat.cpp
-        src/lib/PoissonRandomField.cpp
-        )
+    src/lib/AAMutSeldSCodonSubMatrix.cpp
+    src/lib/AAMutSelOmegaCodonSubMatrix.cpp
+    src/lib/AAMutSelNeCodonMatrixBidimArray.cpp
+    src/lib/BranchSitePath.cpp
+    src/lib/Chain.cpp
+    src/lib/Chrono.cpp
+    src/lib/CodonSequenceAlignment.cpp
+    src/lib/CodonStateSpace.cpp
+    src/lib/CodonSubMatrix.cpp
+    src/lib/GTRSubMatrix.cpp
+    src/lib/PhyloProcess.cpp
+    src/lib/Random.cpp
+    src/lib/RandomGeneSample.cpp
+    src/lib/Sample.cpp
+    src/lib/SequenceAlignment.cpp
+    src/lib/StateSpace.cpp
+    src/lib/SubMatrix.cpp
+    src/lib/TaxonSet.cpp
+    src/lib/Chronogram.cpp
+    src/lib/MultivariateProcess.cpp
+    src/lib/ScaledMutationRateCompound.cpp
+    src/lib/ScatterSuffStat.cpp
+    src/lib/PolyData.cpp
+    src/lib/PolyProcess.cpp
+    src/lib/PolySuffStat.cpp
+    src/lib/PoissonRandomField.cpp
+)
 add_library(bayescode_lib STATIC ${BAYESCODE_LIB})
 
 set(BASE_LIBS
-        bayescode_lib
-        tree_lib
-        )
+    bayescode_lib
+    tree_lib
+)
+
+# Mutation-Selection (mutselds)
+add_executable(mutselds "src/AAMutSelMultipledS.cpp")
+target_link_libraries(mutselds ${BASE_LIBS})
 
 # Mutation-Selection (mutselomega)
-add_executable(mutselomega "src/AAMutSelMultipleOmega.cpp")
-target_link_libraries(mutselomega ${BASE_LIBS})
+# add_executable(mutselomega "src/AAMutSelMultipleOmega.cpp")
+# target_link_libraries(mutselomega ${BASE_LIBS})
 
 # Read Mutation-Selection (readmutselomega)
-add_executable(readmutselomega "src/ReadAAMutSelMultipleOmega.cpp")
-target_link_libraries(readmutselomega ${BASE_LIBS})
+add_executable(readmutselds "src/ReadAAMutSelMultipledS.cpp")
+target_link_libraries(readmutselds ${BASE_LIBS})
 
 # Node Ne mutsel (nodemutsel)
 add_executable(nodemutsel "src/DatedNodeMutSel.cpp")
@@ -95,9 +103,9 @@ target_link_libraries(readnodetraits ${BASE_LIBS})
 add_executable(nodetraits "src/DatedNode.cpp")
 target_link_libraries(nodetraits ${BASE_LIBS})
 
-if (TINY)
+if(TINY)
     message("-- INFO: Compiling uniquely nodetraits, nodemutsel and mutselomega.")
-else ()
+else()
     # Single omega (globom)
     add_executable(globom "src/SingleOmega.cpp")
     target_link_libraries(globom ${BASE_LIBS})
@@ -157,11 +165,13 @@ else ()
     # tests
     add_executable(tree_test "src/tree/test.cpp")
     target_link_libraries(tree_test tree_lib)
+
     # MPI
     add_executable(mpi_par_test "src/mpi_components/test/mpi_test.cpp")
     target_link_libraries(mpi_par_test ${MPI_LIBRARIES})
 
     add_executable(all_tests "src/all_tests.cpp")
     target_link_libraries(all_tests ${MPI_LIBRARIES})
-endif (TINY)
+endif(TINY)
+
 unset(TINY CACHE)

@@ -9,7 +9,7 @@
  */
 
 class AAMutSelCodonMatrixBidimArray : public BidimArray<SubMatrix>,
-                                      public BidimArray<AAMutSelOmegaCodonSubMatrix> {
+                                      public BidimArray<AAMutSeldSCodonSubMatrix> {
   public:
     //! constructor parameterized by an array of fitness profiles, a codon
     //! state space and a single nucleotide matrix.
@@ -22,8 +22,8 @@ class AAMutSelCodonMatrixBidimArray : public BidimArray<SubMatrix>,
           delta_omega_array(indelta_omega_array),
           omega_shift(inomega_shift),
           matrixarray(infitnessarray->GetSize(),
-              std::vector<AAMutSelOmegaCodonSubMatrix *>(
-                  indelta_omega_array->GetSize(), (AAMutSelOmegaCodonSubMatrix *)0)) {
+              std::vector<AAMutSeldSCodonSubMatrix *>(
+                  indelta_omega_array->GetSize(), (AAMutSeldSCodonSubMatrix *)0)) {
         Create();
     }
 
@@ -38,11 +38,11 @@ class AAMutSelCodonMatrixBidimArray : public BidimArray<SubMatrix>,
     double GetOmega(int i) const { return omega_shift + delta_omega_array->GetVal(i); }
 
     //! const access to the matrix for row (fitness cat) i and column (omega cat) j
-    virtual const AAMutSelOmegaCodonSubMatrix &GetVal(int i, int j) const override {
+    virtual const AAMutSeldSCodonSubMatrix &GetVal(int i, int j) const override {
         return *matrixarray[i][j];
     }
     //! non const access to the matrix for row (fitness cat) i and column (omega cat) j
-    virtual AAMutSelOmegaCodonSubMatrix &operator()(int i, int j) override {
+    virtual AAMutSeldSCodonSubMatrix &operator()(int i, int j) override {
         return *matrixarray[i][j];
     }
 
@@ -50,7 +50,7 @@ class AAMutSelCodonMatrixBidimArray : public BidimArray<SubMatrix>,
     void Create() {
         for (int i = 0; i < GetNrow(); i++) {
             for (int j = 0; j < GetNcol(); j++) {
-                matrixarray[i][j] = new AAMutSelOmegaCodonSubMatrix(
+                matrixarray[i][j] = new AAMutSeldSCodonSubMatrix(
                     codonstatespace, nucmatrix, fitnessarray->GetVal(i), GetOmega(j), 1.0);
             }
         }
@@ -98,5 +98,5 @@ class AAMutSelCodonMatrixBidimArray : public BidimArray<SubMatrix>,
     const Selector<std::vector<double>> *fitnessarray;
     const Selector<double> *delta_omega_array;
     double omega_shift;
-    std::vector<std::vector<AAMutSelOmegaCodonSubMatrix *>> matrixarray;
+    std::vector<std::vector<AAMutSeldSCodonSubMatrix *>> matrixarray;
 };
