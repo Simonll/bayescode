@@ -550,6 +550,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         model_node(info, "omega_weight", *omega_weight);
         model_node(info, "delta_omegahyperinvshape", delta_omegahyperinvshape);
         model_node(info, "delta_omegahypermean", delta_omegahypermean);
+        model_node(info, "codonfitness", codonfitness);
 
 
         model_stat(info, "logprior", [this]() { return GetLogPrior(); });
@@ -577,6 +578,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "aacenterent", [this]() { return GetMeanComponentAAEntropy(); });
         model_stat(info, "statent", [this]() { return GetNucRREntropy(); });
         model_stat(info, "rrent", [this]() { return GetNucStatEntropy(); });
+        model_stat(info, "codonent", [this]() { return GetCodonFitnessEntropy(); });
     }
     //-------------------
     // Accessors
@@ -887,6 +889,8 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
             if (nucmode < 2) { MoveNucRates(); }
 
+            if (nucmode < 2) { MoveCodonFitness(); }
+
             if (omegamode < 2) { MoveOmegaMixture(3); }
 
             if (!flataafitness) {
@@ -936,6 +940,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
             &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
     }
 
+    //! MH move on codonfitnesses parameters
     void MoveCodonFitness() {
         Move::Profile(codonfitness, 0.1, 1, GetCodonStateSpace()->GetNstate(),
             &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb,
@@ -1493,6 +1498,10 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
     //! return entropy of vector of equilibrium nucleotide composition
     double GetNucStatEntropy() const { return Random::GetEntropy(nucrelrate); }
+
+    //! return entropy of vector of nucleotide exchange rates
+    double GetCodonFitnessEntropy() const { return Random::GetEntropy(codonfitness); }
+
 
     //! return predicted omega induced by the mutation-selection balance
     double GetPredictedOmegaKnot() const {
