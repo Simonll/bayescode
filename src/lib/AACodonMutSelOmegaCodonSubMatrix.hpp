@@ -51,13 +51,13 @@ class AACodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
     }
 
     double GetCodonFitness(int a) const {
-        assert(std::abs((exp(log(aa[a])) + 1e-8) - codonfitnesses[a]) < 1e-6);
-        return fitnesses[a];
+        assert(std::abs((exp(log(codon[a])) + 1e-8) - codonfitnesses[a]) < 1e-6);
+        return codonfitnesses[a];
     }
 
     double GetLogCodonFitness(int a) const {
         assert(std::abs(log(GetCodonFitness(a)) - logcodonfitnesses[a]) < 1e-6);
-        return logfitnesses[a];
+        return logcodonfitnesses[a];
     }
 
     std::tuple<double, double> GetFlowDNDS() const;
