@@ -20,7 +20,7 @@ class CodonMutselArgParse : public BaseArgParse {
         false, 30, "int", cmd};
     ValueArg<std::string> profiles{"", "profiles",
         "File path the fitness profiles (tsv or csv), thus considered fixed. "
-        "Each line must contains the fitness of each of the 20 amino-acid, thus summing to one. "
+        "Each line must contains the fitness of each of the 61 codons, thus summing to one. "
         "If same number of profiles as the codon alignment, site allocations are considered fixed. "
         "If smaller than the alignment size, site allocations are computed and `ncat` is given by "
         "the number of profiles in the file.",
@@ -31,8 +31,10 @@ class CodonMutselArgParse : public BaseArgParse {
         cmd, false};
     SwitchArg freeomega{"", "freeomega",
         "ω is allowed to vary (default ω is 1.0). "
-        "Combined with the option `flatfitness`, we obtain the classical, ω-based codon model (Muse & Gaut). "
-        "Without the option `flatfitness`, we obtain the mutation-selection codon model with a multiplicative factor (ω⁎).",
+        "Combined with the option `flatfitness`, we obtain the classical, ω-based codon model "
+        "(Muse & Gaut). "
+        "Without the option `flatfitness`, we obtain the mutation-selection codon model with a "
+        "multiplicative factor (ω⁎).",
         cmd, false};
     ValueArg<int> omegancat{
         "", "omegancat", "Number of components for ω (finite mixture).", false, 1, "int", cmd};
@@ -71,11 +73,11 @@ int main(int argc, char *argv[]) {
         cmd.parse();
         chain_driver =
             new ChainDriver(cmd.chain_name(), args.every.getValue(), args.until.getValue());
-        model = new CodonMutSelMultipleOmegaModel(args.alignment.getValue(), args.treefile.getValue(),
-            codonmutsel_args.profiles.getValue(), codonmutsel_args.omegamode(),
-            codonmutsel_args.ncat.getValue(), 1, codonmutsel_args.omegancat.getValue(),
-            codonmutsel_args.omegashift.getValue(), codonmutsel_args.flatfitness.getValue(),
-            codonmutsel_args.omegaarray.getValue());
+        model = new CodonMutSelMultipleOmegaModel(args.alignment.getValue(),
+            args.treefile.getValue(), codonmutsel_args.profiles.getValue(),
+            codonmutsel_args.omegamode(), codonmutsel_args.ncat.getValue(), 1,
+            codonmutsel_args.omegancat.getValue(), codonmutsel_args.omegashift.getValue(),
+            codonmutsel_args.flatfitness.getValue(), codonmutsel_args.omegaarray.getValue());
     }
 
     ConsoleLogger console_logger;

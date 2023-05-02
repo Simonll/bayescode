@@ -25,23 +25,23 @@
  * j running over branches
  * - a GTR nucleotide matrix Q = rho * pi, specifying the mutation process
  * (assumed homogeneous across sites and lineages)
- * - an array of site-specific amino-acid fitness profiles F_ia, for site i and
- * amino-acid a
+ * - an array of site-specific codon fitness profiles F_ic, for site i and
+ * codon c
  * - an array of site-specific omega multiplier, capturing deviations of the non-syn rate from the
  * model; this parameter is fixed to 1 by default.
  *
- * Site-specific amino-acid fitness profiles are drawn from a Dirichlet process,
+ * Site-specific codon fitness profiles are drawn from a Dirichlet process,
  * implemented using a truncated stick-breaking process, of concentration
  * parameter kappa, and truncated at Ncat.
  *
  * The base distribution of this Dirichlet process, G_0, is itself a (truncated
  * stick breaking) mixture of Dirichlet distributions, parameterized by
  * basekappa, and truncated at baseNcat. Each component of this mixture
- * Dirichlet is parameterized by a center (a 20-freqeuncy vector) and a
+ * Dirichlet is parameterized by a center (a 61-freqeuncy vector) and a
  * concentration.
  *
  * Concerning the first-level stick-breaking process, by default, Ncat == 100
- * (can be changed using the  -ncat option). As for baseNcat, it is equal to 1,
+ * (can be changed using the -ncat option). As for baseNcat, it is equal to 1,
  * in which case the base distribution G_0 is just a simple Dirichlet (as in
  * Rodrigue et al, 2010). This simple model is probably the one that should be
  * used by default for single-gene analyses. The more complex model with
@@ -57,7 +57,7 @@
  * - omega: fixed to 1 or exponential of rate 1
  * - kappa: exponential of rate 0.1
  * - center of base distribution: uniform Dirichlet
- * - concentration of base distribution: exponential of mean 20.
+ * - concentration of base distribution: exponential of mean 61.
  *
  */
 
@@ -85,7 +85,7 @@ double distance(std::vector<double> const &v1, std::vector<double> const &v2) {
 }
 
 std::tuple<std::vector<std::vector<double>>, std::vector<size_t>> open_preferences(
-    std::string const &file_name) {
+    std::string const &file_name, int Nstate) {
     std::vector<std::vector<double>> fitness_profiles{};
     std::vector<size_t> alloc;
 
@@ -107,10 +107,10 @@ std::tuple<std::vector<std::vector<double>>, std::vector<size_t>> open_preferenc
             nbr_col = n + 1;
         }
     }
-    nbr_col -= 61;
+    nbr_col -= Nstate;
 
     while (getline(input_stream, line)) {
-        std::vector<double> fitness_profil(61, 0.0);
+        std::vector<double> fitness_profil(Nstate, 0.0);
         std::string word;
         std::istringstream line_stream(line);
         unsigned counter{0};
@@ -256,7 +256,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     bool flatfitness;
 
-    Chrono aachrono;
+    Chrono chrono;
     Chrono basechrono;
     Chrono totchrono;
 
@@ -334,7 +334,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                           << std::endl;
                 exit(1);
             }
-            prefs = open_preferences(profilesfile);
+            prefs = open_preferences(profilesfile, GetCodonStateSpace()->GetNstate());
             clamp_profiles = true;
             Ncat = static_cast<int>(std::get<0>(prefs).size());
             if (static_cast<int>(std::get<1>(prefs).size()) == Nsite) {
@@ -546,8 +546,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 model_stat(info, "basekappa", basekappa);
             }
         }
-        model_stat(info, "codonent", [this]() { return GetMeanAAEntropy(); });
-        model_stat(info, "meanaaconc", [this]() { return GetMeanComponentAAConcentration(); });
+        model_stat(info, "codonent", [this]() { return GetMeanEntropy(); });
+        model_stat(info, "meanaaconc", [this]() { return GetMeanComponentConcentration(); });
         model_stat(info, "aacenterent", [this]() { return GetMeanComponentAAEntropy(); });
         model_stat(info, "statent", [this]() { return GetNucRREntropy(); });
         model_stat(info, "rrent", [this]() { return GetNucStatEntropy(); });
@@ -849,9 +849,9 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             if (omegamode < 2) { MoveOmegaMixture(3); }
 
             if (!flatfitness) {
-                aachrono.Start();
+                chrono.Start();
                 MoveCodonMixture(3);
-                aachrono.Stop();
+                chrono.Stop();
 
                 basechrono.Start();
                 if (basemode < 2 and !clamp_profiles) { MoveBase(3); }
@@ -916,13 +916,13 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         componentcodonmatrixbidimarray->CorruptCodonMatricesRowOccupancy(*profile_occupancy);
     }
 
-    //! MH move on amino-acid fitness profiles (occupied components only)
+    //! MH move on codon fitness profiles (occupied components only)
     void MoveCodonProfiles() {
         CompMoveCodonProfiles(3);
         MulMoveCodonProfiles(3);
     }
 
-    //! MH move on amino-acid fitness profiles: additive compensated move on pairs
+    //! MH move on codon fitness profiles: additive compensated move on pairs
     //! of entries of the vector
     double CompMoveCodonProfiles(int nrep) {
         MoveCodon(1.0, 1, nrep);
@@ -930,7 +930,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return 1.0;
     }
 
-    //! MH move on amino-acid fitness profiles: multiplicative move (using the
+    //! MH move on codon fitness profiles: multiplicative move (using the
     //! Gamma representation of the Dirichlet)
     double MulMoveCodonProfiles(int nrep) {
         MoveCodonGamma(3.0, nrep);
@@ -938,7 +938,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return 1.0;
     }
 
-    //! MH move on amino-acid fitness profiles: additive compensated move on pairs
+    //! MH move on codon fitness profiles: additive compensated move on pairs
     //! of entries of the vector
     double MoveCodon(double tuning, int n, int nrep) {
         double nacc = 0;
@@ -973,7 +973,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return nacc / ntot;
     }
 
-    //! helper function: log density of 20 gammas
+    //! helper function: log density of Nstate gammas
     double GammaCodonLogPrior(
         const std::vector<double> &x, const std::vector<double> &codoncenter, double codonconc) {
         double total = 0;
@@ -984,7 +984,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return total;
     }
 
-    //! MH move on amino-acid fitness profiles: multiplicative move (using the
+    //! MH move on codon fitness profiles: multiplicative move (using the
     //! Gamma representation of the Dirichlet)
     double MoveCodonGamma(double tuning, int nrep) {
         double nacc = 0;
@@ -1409,11 +1409,11 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return tot / omegaNcat;
     }
 
-    //! return mean entropy of amino-acd fitness profiles
-    double GetMeanAAEntropy() const { return componentcodonfitnessarray->GetMeanEntropy(); }
+    //! return mean entropy of codon fitness profiles
+    double GetMeanEntropy() const { return componentcodonfitnessarray->GetMeanEntropy(); }
 
     //! return mean of concentration parameters of base distribution
-    double GetMeanComponentAAConcentration() const {
+    double GetMeanComponentConcentration() const {
         double tot = 0;
         double totw = 0;
         for (int i = basemin; i < baseNcat; i++) {

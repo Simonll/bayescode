@@ -11,7 +11,7 @@
 class CodonMutSelCodonMatrixBidimArray : public BidimArray<SubMatrix>,
                                          public BidimArray<CodonMutSelOmegaCodonSubMatrix> {
   public:
-    //! constructor parameterized by an array of fitness profiles, a codon
+    //! constructor parameterized by an array of codon fitness profiles, a codon
     //! state space and a single nucleotide matrix.
     CodonMutSelCodonMatrixBidimArray(const CodonStateSpace *incodonstatespace,
         const SubMatrix *innucmatrix, const Selector<std::vector<double>> *infitnessarray,
