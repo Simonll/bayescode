@@ -29,6 +29,7 @@
  * amino-acid a
  * - an array of site-specific omega multiplier, capturing deviations of the non-syn rate from the
  * model; this parameter is fixed to 1 by default.
+ * - an array of codon fitness prfole F_c, for codon c
  *
  * Site-specific amino-acid fitness profiles are drawn from a Dirichlet process,
  * implemented using a truncated stick-breaking process, of concentration
@@ -54,6 +55,7 @@
  * - branch lengths iid exponential, of rate lambda
  * - lambda exponential of rate 10
  * - rho and pi uniform Dirichlet
+ * - codonfinesses uniform Dirichlet
  * - omega: fixed to 1 or exponential of rate 1
  * - kappa: exponential of rate 0.1
  * - center of base distribution: uniform Dirichlet
@@ -88,7 +90,6 @@ std::tuple<std::vector<std::vector<double>>, std::vector<size_t>> open_preferenc
     std::string const &file_name) {
     std::vector<std::vector<double>> fitness_profiles{};
     std::vector<size_t> alloc;
-
     std::ifstream input_stream(file_name);
     if (!input_stream) {
         std::cerr << "Preferences file " << file_name << " doesn't exist" << std::endl;
@@ -142,9 +143,51 @@ std::tuple<std::vector<std::vector<double>>, std::vector<size_t>> open_preferenc
 }
 
 
+std::vector<double> open_codonpreferences(std::string const &file_name, int Nstate) {
+    std::vector<double> fitness_profil(Nstate, 0.0);
+    std::ifstream input_stream(file_name);
+    if (!input_stream) {
+        std::cerr << "Preferences file " << file_name << " doesn't exist" << std::endl;
+    }
+
+    std::string line;
+
+    // skip the header of the file
+    getline(input_stream, line);
+    char sep{' '};
+    long nbr_col = 0;
+    for (char sep_test : std::vector<char>({' ', ',', '\t'})) {
+        long n = std::count(line.begin(), line.end(), sep_test);
+        if (n > nbr_col) {
+            sep = sep_test;
+            nbr_col = n + 1;
+        }
+    }
+    nbr_col -= Nstate;
+
+    getline(input_stream, line);
+    std::string word;
+    std::istringstream line_stream(line);
+    unsigned counter{0};
+
+    while (getline(line_stream, word, sep)) {
+        if (counter >= nbr_col) { fitness_profil[counter - nbr_col] = stod(word); }
+        counter++;
+    }
+
+    bool push = true;
+    if (std::abs(std::accumulate(fitness_profil.begin(), fitness_profil.end(), 0.0) - 1.0) > 1e-5) {
+        std::cerr << "Fitness profile doesn't sum to 1 for line:\n" << line << std::endl;
+    };
+
+    return fitness_profil;
+}
+
+
 class AACodonMutSelMultipleOmegaModel : public ChainComponent {
     std::string datafile, treefile, aaprofilesfile{"Null"}, codonfitnessfile{"Null"};
     bool clamp_profiles{false}, clamp_profiles_allocation{false};
+    bool clamp_codonfitness{false};
     std::unique_ptr<Tracer> tracer;
     std::unique_ptr<const Tree> tree;
 
@@ -408,8 +451,6 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         nucmatrix = new GTRSubMatrix(Nnuc, nucrelrate, nucstat, true);
 
         // codonfitness
-
-
         codonfitness.assign(GetCodonStateSpace()->GetNstate(), 0);
 
         codonfitnesshypercenter.assign(codonfitness.size(), 1.0 / codonfitness.size());
@@ -420,6 +461,24 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
             ((double)codonfitness.size()));
         if (flatcodonfitness) {
             std::fill(codonfitness.begin(), codonfitness.end(), 1.0 / codonfitness.size());
+        }
+
+        std::vector<double> codonprefs{};
+        if (!codonfitnessfile.empty() and codonfitnessfile != "Null") {
+            if (flatcodonfitness) {
+                std::cerr << "Giving a preferences profiles file and setting 'flatfitness' to true "
+                             "is incompatible. These parameters are exclusive to one another."
+                          << std::endl;
+                exit(1);
+            }
+            codonprefs = open_codonpreferences(codonfitnessfile, GetCodonStateSpace()->GetNstate());
+            clamp_codonfitness = true;
+        }
+
+        if (clamp_codonfitness) {
+            for (int c = 0; c < GetCodonStateSpace()->GetNstate(); c++) {
+                codonfitness[c] = codonprefs[c];
+            }
         }
 
 
