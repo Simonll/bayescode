@@ -29,7 +29,8 @@ void AACodonMutSelOmegaCodonSubMatrix::ComputeArray(int i) const {
 
         if (!Synonymous(i, j)) {
             double deltaS = GetLogFitness(GetCodonStateSpace()->Translation(j)) -
-                            GetLogFitness(GetCodonStateSpace()->Translation(i));
+                            GetLogFitness(GetCodonStateSpace()->Translation(i)) +
+                            GetLogCodonFitness(j) - GetLogCodonFitness(i);
             if ((fabs(deltaS)) < 1e-30) {
                 Q(i, j) *= 1 + deltaS / 2;
             } else if (deltaS > 50) {

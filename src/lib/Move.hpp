@@ -236,4 +236,34 @@ class Move {
         }
         return nacc / ntot;
     }
+
+    template <class C>
+    static double TwoProfiles(std::vector<double> &x, double tuning_x, int n_x,
+        LogProbF<C> logprobf_x, std::vector<double> &y, double tuning_y, int n_y,
+        LogProbF<C> logprobf_y, int nrep, UpdateF<C> updatef, C *This) {
+        double nacc = 0;
+        double ntot = 0;
+        std::vector<double> bk_x(x.size(), 0);
+        std::vector<double> bk_y(y.size(), 0);
+        for (int rep = 0; rep < nrep; rep++) {
+            bk_x = x;
+            bk_y = y;
+            double deltalogprob = -(This->*logprobf_x)() - (This->*logprobf_y)();
+            double loghastings = Random::ProfileProposeMove(x, x.size(), tuning_x, n_x);
+            loghastings += Random::ProfileProposeMove(y, y.size(), tuning_y, n_y);
+            (This->*updatef)();
+            deltalogprob += (This->*logprobf_x)() + (This->*logprobf_y)();
+            deltalogprob += loghastings;
+            int accepted = (log(Random::Uniform()) < deltalogprob);
+            if (accepted) {
+                nacc++;
+            } else {
+                x = bk_x;
+                y = bk_y;
+                (This->*updatef)();
+            }
+            ntot++;
+        }
+        return nacc / ntot;
+    }
 };
