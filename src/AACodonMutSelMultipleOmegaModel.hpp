@@ -652,6 +652,14 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
     bool FlatCodonFitness() const { return flatcodonfitness; }
 
+    double GetNucRR(int i) { return nucrelrate[i]; }
+    double GetNucStat(int i) { return nucstat[i]; }
+
+    double GetCodonFitness(int i) { return codonfitness[i]; }
+    double GetAASiteFitness(int site, int i) {
+        return siteaafitnessarray->GetVal(profile_alloc->GetVal(site))[i];
+    }
+
     //! return number of aligned sites
     int GetNsite() const { return Nsite; }
 
@@ -1496,6 +1504,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
                 &AACodonMutSelMultipleOmegaModel::NoUpdate, this);
         }
     }
+
 
     //-------------------
     // Traces and Monitors
