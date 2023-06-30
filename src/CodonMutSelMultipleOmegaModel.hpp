@@ -569,6 +569,13 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     //! return current omega value for omega mixture of component k
     double GetComponentOmega(int k) const { return omega_shift + delta_omega_array->GetVal(k); }
 
+    double GetNucRR(int i) { return nucrelrate[i]; }
+    double GetNucStat(int i) { return nucstat[i]; }
+
+    double GetSiteCodonFitness(int site, int i) {
+        return sitecodonfitnessarray->GetVal(profile_alloc->GetVal(site))[i];
+    }
+
     //! return current omega value for omega mixture of site
     double GetSiteOmega(int site) const { return GetComponentOmega(omega_alloc->GetVal(site)); }
 
