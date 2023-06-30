@@ -112,9 +112,9 @@ run-app-tests: all
 	@echo "\n\e[35m\e[1m== Diffsel double sparse ====================================================\e[0m"
 	@make --no-print-directory diffseldsparse
 	@echo "\n\e[35m\e[1m== Node Omega run ===========================================================\e[0m"
-	bin/nodeomegamutsel -a data/polymorphism/gal4.ali -t data/polymorphism/gal4.newick -u ${POINTS} _test/nodeomega_gal4
+	bin/nodeomega -a data/polymorphism/gal4.ali -t data/polymorphism/gal4.newick -u ${POINTS} _test/nodeomega_gal4
 	@echo "\n\e[35m\e[1m== Node Omega restart =======================================================\e[0m"
-	bin/nodeomegamutsel _test/nodeomega_gal4
+	bin/nodeomega _test/nodeomega_gal4
 	@echo "\n\e[35m\e[1m== Node MutSel run ==========================================================\e[0m"
 	bin/nodemutsel --ncat 3 -a data/polymorphism/gal4.ali -t data/polymorphism/gal4.newick -u ${POINTS} _test/nodemutsel_gal4
 	@echo "\n\e[35m\e[1m== Node MutSel restart ======================================================\e[0m"
@@ -149,7 +149,7 @@ aamutsel: bin
 	bin/readaamutsel --ss _aamutsel/gal4_poly
 
 .PHONY: mutselomega
-mutselomega: bin
+mutselomega: tiny
 	@cd bin ; make --no-print-directory -j8 mutselomega readmutselomega
 	@rm -rf _mutselomega
 	@mkdir _mutselomega
@@ -180,7 +180,7 @@ DM5: bin
 	bin/mutseldm5 _mutseldm5/bglobin
 
 .PHONY: dated
-dated: bin
+dated: tiny
 	@cd bin ; make --no-print-directory -j8 nodemutsel
 	@rm -rf _dated
 	@mkdir _dated
@@ -188,6 +188,18 @@ dated: bin
 	bin/nodemutsel _dated/node_gal4
 	bin/nodemutsel -a data/polymorphism/gal4.ali -t data/polymorphism/gal4.newick --ncat 3 -u ${POINTS} -p _dated/node_poly_gal4
 	bin/nodemutsel _dated/node_poly_gal4
+
+.PHONY: traits
+traits: tiny
+	@cd bin ; make --no-print-directory -j8 nodetraits readnodetraits
+	@rm -rf _traits
+	@mkdir _traits
+	python3 utils/neutrality_index.py --tree data/body_size/mammals.male.tree --traits data/body_size/mammals.male.traits.tsv --var_within data/body_size/mammals.male.var_within.tsv --output _traits/mammals.male.ML.tsv
+	bin/nodetraits -t data/body_size/mammals.male.tree --traitsfile data/body_size/mammals.male.traits.tsv -u 100 _traits/mammals.male
+	bin/nodetraits _traits/mammals.male
+	bin/readnodetraits -b 50 --newick _traits/mammals.male
+	bin/readnodetraits -b 50 --cov _traits/mammals.male
+	python3 utils/ratio_pvalue.py --burn_in 50 --inference _traits/mammals.male.trace --var_within data/body_size/mammals.male.var_within.tsv --output _traits/mammals.male.Bayes.tsv
 
 .PHONY: diffseldsparse
 diffseldsparse: all
