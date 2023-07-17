@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < size; i++) {
             cerr << '.';
             cr.skip(every);
-            model.PostPred("ppred_" + chain_name + "_" + to_string(i) + ".ali");
+            model.PostPred(chain_name + "_" + "ppred_" + to_string(i) + ".ali");
         }
         cerr << '\n';
     } else if (read_args.ss.getValue()) {
