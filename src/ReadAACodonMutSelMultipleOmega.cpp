@@ -15,6 +15,10 @@ class ReadAACodonMutSelDSBDPOmegaArgParse : public ReadArgParse {
     explicit ReadAACodonMutSelDSBDPOmegaArgParse(CmdLine& cmd) : ReadArgParse(cmd) {}
 
     SwitchArg nuc{"n", "nuc", "Mean posterior nucleotide matrix.", cmd};
+    SwitchArg codonfitness{"c", "codon",
+        "Computes the mean posterior codon equilibrium frequencies"
+        "(codon fitness profile).",
+        cmd};
     ValueArg<string> confidence_interval{"c", "confidence_interval",
         "Posterior credible interval for ω (per site and at the gene level).", false, "", "string",
         cmd};
@@ -27,7 +31,7 @@ class ReadAACodonMutSelDSBDPOmegaArgParse : public ReadArgParse {
         "Computes the mean posterior site-specific amino-acid equilibrium frequencies"
         "(amino-acid fitness profiles).",
         cmd};
-    SwitchArg sel{"d", "distribution", "Computes selection coefficients", cmd};
+    SwitchArg sel{"d", "distribution", "Computes scaled selection coefficients", cmd};
     ValueArg<double> omega_pp{"", "omega_threshold",
         "Threshold to compute the mean posterior probability that ω⁎ "
         "(or ω if option `flatfitness` is used in `mutselomega`) is greater than a given value.",
@@ -48,7 +52,7 @@ int main(int argc, char* argv[]) {
     ChainDriver::fake_read(is);  // We're not interested in the ChainDriver of the param file
     AACodonMutSelMultipleOmegaModel model(is);
     ChainReader cr{model, chain_name + ".chain"};
-
+    int Nstate = model.GetCodonStateSpace()->GetNstate();
     cr.skip(burnin);
     cerr << size << " points to read\n";
 
@@ -158,8 +162,23 @@ int main(int argc, char* argv[]) {
             }
         }
         cerr << '\n';
+    } else if (read_args.codonfitness.getValue()) {
+        vector<double> codonfitness(Nstate, {0});
+        for (int step = 0; step < size; step++) {
+            cerr << '.';
+            cr.skip(every);
+            for (int i = 0; i < Nstate; i++) { codonfitness[i] += model.GetCodonFitness(i); }
+        }
+        cerr << '\n';
+        string filename{chain_name + ".codonfitness.tsv"};
+        ofstream os(filename.c_str());
+        os << "TTT\tTTC\tTTA\tTTG\tTCT\tTCC\tTCA\tTCG\tTAT\tTAC\tTGT\tTGC\tTGG\tCTT\tCTC\tCTA"
+              "\tCTG\tCCT\tCCC\tCCA\tCCG\tCAT\tCAC\tCAA\tCAG\tCGT\tCGC\tCGA\tCGG\tATT\tATC\tATA\tAT"
+              "G\tACT\tACC\tACA\tACG\tAAT\tAAC\tAAA\tAAG\tAGT\tAGC\tAGA\tAGG\tGTT\tGTC\tGTA\tGTG\tG"
+              "CT\tGCC\tGCA\tGCG\tGAT\tGAC\tGAA\tGAG\tGGT\tGGC\tGGA\tGGG\n";
+        for (int i = 0; i < Nstate; i++) { os << codonfitness[i] / size; }
+        cerr << '\n';
     } else if (read_args.sel.getValue()) {
-        int Nstate = model.GetCodonStateSpace()->GetNstate();
         int Ncat = 241;
         double min = -30;
         double max = 30;
