@@ -198,7 +198,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
     int Nsite;
     int Ntaxa;
     int Nbranch;
-
+    int Nstate;
     // Branch lengths
     double blhypermean;
     double blhyperinvshape;
@@ -361,7 +361,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
         Nsite = codondata->GetNsite();  // # columns
         Ntaxa = codondata->GetNtaxa();
-
+        Nstate = GetCodonStateSpace()->GetNstate();
         if (Ncat == -1) { Ncat = Nsite; }
         if (Ncat > Nsite) { Ncat = Nsite; }
         if (Ncat > 100) { Ncat = 100; }
@@ -451,7 +451,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         nucmatrix = new GTRSubMatrix(Nnuc, nucrelrate, nucstat, true);
 
         // codonfitness
-        codonfitness.assign(GetCodonStateSpace()->GetNstate(), 0);
+        codonfitness.assign(Nstate, 0);
 
         codonfitnesshypercenter.assign(codonfitness.size(), 1.0 / codonfitness.size());
         codonfitnesshyperinvconc = 1.0 / codonfitness.size();
@@ -466,21 +466,19 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         std::vector<double> codonprefs{};
         if (!codonfitnessfile.empty() and codonfitnessfile != "Null") {
             if (flatcodonfitness) {
-                std::cerr << "Giving a preferences profiles file and setting 'flatfitness' to true "
-                             "is incompatible. These parameters are exclusive to one another."
-                          << std::endl;
+                std::cerr
+                    << "Giving a preferences profiles file and setting 'flatcodonfitness' to true "
+                       "is incompatible. These parameters are exclusive to one another."
+                    << std::endl;
                 exit(1);
             }
-            codonprefs = open_codonpreferences(codonfitnessfile, GetCodonStateSpace()->GetNstate());
+            codonprefs = open_codonpreferences(codonfitnessfile, Nstate);
             clamp_codonfitness = true;
         }
 
         if (clamp_codonfitness) {
-            for (int c = 0; c < GetCodonStateSpace()->GetNstate(); c++) {
-                codonfitness[c] = codonprefs[c];
-            }
+            for (int c = 0; c < Nstate; c++) { codonfitness[c] = codonprefs[c]; }
         }
-
 
         // base distribution (can be skipped)
         basekappa = 1.0;
@@ -616,6 +614,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "lnL", [this]() { return GetLogLikelihood(); });
         // 3x: per coding site (and not per nucleotide site)
         model_stat(info, "length", [this]() { return 3 * branchlength->GetTotalLength(); });
+        model_stat(info, "ds", [this]() { return GetPredictedEffectivedS(); });
         model_stat(info, "dnds", [this]() { return GetPredictedEffectivedNdS(); });
         model_stat(info, "omega0", [this]() { return GetPredictedOmegaKnot(); });
         model_stat(info, "omega", [this]() { return GetMeanOmega(); });
@@ -1596,6 +1595,15 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         double mean = 0;
         for (int i = 0; i < GetNsite(); i++) {
             mean += GetSiteOmega(i) * sitecodonsubmatrixarray->GetVal(i).GetPredictedDNDS();
+        }
+        mean /= GetNsite();
+        return mean;
+    }
+
+    double GetPredictedEffectivedS() const {
+        double mean = 0;
+        for (int i = 0; i < GetNsite(); i++) {
+            mean += sitecodonsubmatrixarray->GetVal(i).GetPredictedDS();
         }
         mean /= GetNsite();
         return mean;
