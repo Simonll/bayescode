@@ -155,6 +155,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     int Nsite;
     int Ntaxa;
     int Nbranch;
+    int Nstate;
 
     // Branch lengths
     double blhypermean;
@@ -306,6 +307,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
         Nsite = codondata->GetNsite();  // # columns
         Ntaxa = codondata->GetNtaxa();
+        Nstate = GetCodonStateSpace()->GetNstate();
 
         if (Ncat == -1) { Ncat = Nsite; }
         if (Ncat > Nsite) { Ncat = Nsite; }
@@ -530,6 +532,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "lnL", [this]() { return GetLogLikelihood(); });
         // 3x: per coding site (and not per nucleotide site)
         model_stat(info, "length", [this]() { return 3 * branchlength->GetTotalLength(); });
+        model_stat(info, "ds", [this]() { return GetPredictedEffectivedS(); });
         model_stat(info, "dnds", [this]() { return GetPredictedEffectivedNdS(); });
         model_stat(info, "omega0", [this]() { return GetPredictedOmegaKnot(); });
         model_stat(info, "omega", [this]() { return GetMeanOmega(); });
@@ -547,8 +550,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             }
         }
         model_stat(info, "codonent", [this]() { return GetMeanEntropy(); });
-        model_stat(info, "meanaaconc", [this]() { return GetMeanComponentConcentration(); });
-        model_stat(info, "aacenterent", [this]() { return GetMeanComponentAAEntropy(); });
+        model_stat(info, "meancodonconc", [this]() { return GetMeanComponentConcentration(); });
+        model_stat(info, "codoncenterent", [this]() { return GetMeanComponentCodonEntropy(); });
         model_stat(info, "statent", [this]() { return GetNucRREntropy(); });
         model_stat(info, "rrent", [this]() { return GetNucStatEntropy(); });
     }
@@ -1431,7 +1434,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     }
 
     //! return mean entropy of centers of base distribution
-    double GetMeanComponentAAEntropy() const {
+    double GetMeanComponentCodonEntropy() const {
         double tot = 0;
         for (int i = 0; i < baseNcat; i++) {
             tot +=
@@ -1464,6 +1467,15 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         double mean = 0;
         for (int i = 0; i < GetNsite(); i++) {
             mean += GetSiteOmega(i) * sitecodonsubmatrixarray->GetVal(i).GetPredictedDNDS();
+        }
+        mean /= GetNsite();
+        return mean;
+    }
+
+    double GetPredictedEffectivedS() const {
+        double mean = 0;
+        for (int i = 0; i < GetNsite(); i++) {
+            mean += sitecodonsubmatrixarray->GetVal(i).GetPredictedDS();
         }
         mean /= GetNsite();
         return mean;

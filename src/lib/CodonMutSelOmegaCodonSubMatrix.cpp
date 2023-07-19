@@ -105,3 +105,9 @@ double CodonMutSelOmegaCodonSubMatrix::GetPredictedDNDS() const {
     std::tie(dn, ds) = GetFlowDNDS();
     return dn / ds;
 }
+
+double CodonMutSelOmegaCodonSubMatrix::GetPredictedDS() const {
+    double dn = 0, ds = 0;
+    std::tie(dn, ds) = GetFlowDNDS();
+    return ds;
+}
