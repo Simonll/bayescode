@@ -302,11 +302,12 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
     // currently, free wo shrinkage
     int basemode;
 
-    // currently: free wo shrinkage or fixed (1 or 3)
+    // currently: free wo shrinkage or fixed (1 or 3)flatcodonfitness
     int omegamode;
 
     bool flataafitness;
     bool flatcodonfitness;
+    bool flatnucstat;
 
     Chrono aachrono;
     Chrono basechrono;
@@ -332,7 +333,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
     AACodonMutSelMultipleOmegaModel(std::string indatafile, std::string intreefile,
         std::string inaaprofilesfile, std::string incodonprofilesfile, int inomegamode, int inNcat,
         int inbaseNcat, int inomegaNcat, double inomegashift, bool inflatfitness,
-        bool inflatcodonfitness, std::string indelta_omega_array_file)
+        bool inflatcodonfitness, std::string indelta_omega_array_file, bool inflatnucstat)
         : datafile(std::move(indatafile)),
           treefile(std::move(intreefile)),
           aaprofilesfile(std::move(inaaprofilesfile)),
@@ -344,7 +345,8 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
           Ncat(inNcat),
           omegamode(inomegamode),
           flataafitness(inflatfitness),
-          flatcodonfitness(inflatcodonfitness) {
+          flatcodonfitness(inflatcodonfitness),
+          flatnucstat(inflatnucstat) {
         init();
         Update();
     }
@@ -447,20 +449,25 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         nucrelrate.assign(Nrr, 0);
         Random::DirichletSample(nucrelrate, std::vector<double>(Nrr, 1.0 / Nrr), ((double)Nrr));
         nucstat.assign(Nnuc, 0);
-        Random::DirichletSample(nucstat, std::vector<double>(Nnuc, 1.0 / Nnuc), ((double)Nnuc));
+        if (flatnucstat) {
+            std::fill(nucstat.begin(), nucstat.end(), 1.0 / nucstat.size());
+        } else {
+            Random::DirichletSample(nucstat, std::vector<double>(Nnuc, 1.0 / Nnuc), ((double)Nnuc));
+        }
         nucmatrix = new GTRSubMatrix(Nnuc, nucrelrate, nucstat, true);
 
         // codonfitness
         codonfitness.assign(Nstate, 0);
-
         codonfitnesshypercenter.assign(codonfitness.size(), 1.0 / codonfitness.size());
         codonfitnesshyperinvconc = 1.0 / codonfitness.size();
 
-        Random::DirichletSample(codonfitness,
-            std::vector<double>(codonfitness.size(), 1.0 / codonfitness.size()),
-            ((double)codonfitness.size()));
+
         if (flatcodonfitness) {
             std::fill(codonfitness.begin(), codonfitness.end(), 1.0 / codonfitness.size());
+        } else {
+            Random::DirichletSample(codonfitness,
+                std::vector<double>(codonfitness.size(), 1.0 / codonfitness.size()),
+                ((double)codonfitness.size()));
         }
 
         std::vector<double> codonprefs{};
@@ -650,6 +657,8 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
     bool FlatFitness() const { return flataafitness; }
 
     bool FlatCodonFitness() const { return flatcodonfitness; }
+
+    bool FlatNucStat() const { return flatnucstat; }
 
     double GetNucRR(int i) { return nucrelrate[i]; }
     double GetNucStat(int i) { return nucstat[i]; }
@@ -953,13 +962,21 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
             CollectSitePathSuffStat();
 
-            if (!flatcodonfitness) {
+            if (!flatcodonfitness && !flatnucstat) {
                 if (nucmode < 2) {
-                    MoveNucStatCodonFitness();
-                    MoveNucRates();
+                    // MoveNucStatCodonFitness();
+                    MoveNucStatCodonFitness2();
+                    MoveNucRR();
                 }
-            } else {
+            } else if (flatcodonfitness && !flatnucstat) {
                 if (nucmode < 2) { MoveNucRates(); }
+            } else if (!flatcodonfitness && flatnucstat) {
+                if (nucmode < 2) {
+                    MoveCodonFitness();
+                    MoveNucRR();
+                }
+            } else if (flatcodonfitness && flatnucstat) {
+                if (nucmode < 2) { MoveNucRR(); }
             }
 
             if (omegamode < 2) { MoveOmegaMixture(3); }
@@ -997,10 +1014,18 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
     //! MH move on nucleotide rate parameters
     void MoveNucRates() {
+        MoveNucRR();
+        MoveNucStat();
+    }
+
+    void MoveNucRR() {
         Move::Profile(nucrelrate, 0.1, 1, 3, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
         Move::Profile(nucrelrate, 0.01, 3, 3, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+    }
+
+    void MoveNucStat() {
         Move::Profile(nucstat, 0.1, 1, 2, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
         Move::Profile(nucstat, 0.01, 3, 2, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
@@ -1014,6 +1039,15 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
             &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
         Move::TwoProfiles(nucstat, 0.01, 2, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
             codonfitness, 0.01, 10, &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb, 10,
+            &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+    }
+
+    void MoveNucStatCodonFitness2() {
+        Move::TwoProfiles(nucstat, 0.1, 1, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            codonfitness, 0.001, 10, &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb, 10,
+            &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::TwoProfiles(nucstat, 0.01, 2, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            codonfitness, 0.0001, 10, &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb, 10,
             &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
     }
 
@@ -1620,6 +1654,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         os << omegamode << '\t';
         os << flataafitness << '\t';
         os << flatcodonfitness << '\t';
+        os << flatnucstat << '\t';
         tracer->write_line(os);
     }
 
@@ -1640,6 +1675,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         is >> omegamode;
         is >> flataafitness;
         is >> flatcodonfitness;
+        is >> flatnucstat;
         init();
         tracer->read_line(is);
         Update();

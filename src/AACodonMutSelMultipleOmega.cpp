@@ -37,6 +37,7 @@ class MutselArgParse : public BaseArgParse {
         "Fitness profiles are flattened (and `ncat` equals to 1). "
         "This option is not compatible with the option `profiles`.",
         cmd, false};
+    SwitchArg flatnucstat{"", "flatnucstat", "Nucleotide stationary are flattened. ", cmd, false};
     SwitchArg freeomega{"", "freeomega",
         "ω is allowed to vary (default ω is 1.0). "
         "Combined with the option `flatfitness`, we obtain the classical, ω-based codon model "
@@ -81,12 +82,13 @@ int main(int argc, char *argv[]) {
         cmd.parse();
         chain_driver =
             new ChainDriver(cmd.chain_name(), args.every.getValue(), args.until.getValue());
-        model = new AACodonMutSelMultipleOmegaModel(args.alignment.getValue(),
-            args.treefile.getValue(), mutsel_args.profiles.getValue(),
-            mutsel_args.codonfitness.getValue(), mutsel_args.omegamode(),
-            mutsel_args.ncat.getValue(), 1, mutsel_args.omegancat.getValue(),
-            mutsel_args.omegashift.getValue(), mutsel_args.flatfitness.getValue(),
-            mutsel_args.flatcodonfitness.getValue(), mutsel_args.omegaarray.getValue());
+        model =
+            new AACodonMutSelMultipleOmegaModel(args.alignment.getValue(), args.treefile.getValue(),
+                mutsel_args.profiles.getValue(), mutsel_args.codonfitness.getValue(),
+                mutsel_args.omegamode(), mutsel_args.ncat.getValue(), 1,
+                mutsel_args.omegancat.getValue(), mutsel_args.omegashift.getValue(),
+                mutsel_args.flatfitness.getValue(), mutsel_args.flatcodonfitness.getValue(),
+                mutsel_args.omegaarray.getValue(), mutsel_args.flatnucstat.getValue());
     }
 
     ConsoleLogger console_logger;
