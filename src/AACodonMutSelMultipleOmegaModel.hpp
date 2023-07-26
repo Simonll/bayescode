@@ -964,8 +964,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
             if (!flatcodonfitness && !flatnucstat) {
                 if (nucmode < 2) {
-                    // MoveNucStatCodonFitness();
-                    MoveNucStatCodonFitness2();
+                    MoveNucStatCodonFitness();
                     MoveNucRR();
                 }
             } else if (flatcodonfitness && !flatnucstat) {
@@ -1034,22 +1033,14 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
     //! MH move on codonfitnesses and nucstat parameters
     void MoveNucStatCodonFitness() {
-        Move::TwoProfiles(nucstat, 0.1, 1, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            codonfitness, 0.1, 10, &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb, 10,
+        Move::TwoProfiles(nucstat, 0.05, 1, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            codonfitness, 0.01, 1, &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb, 10,
             &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::TwoProfiles(nucstat, 0.01, 2, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            codonfitness, 0.01, 10, &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb, 10,
+        Move::TwoProfiles(nucstat, 0.01, 1, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            codonfitness, 0.005, 1, &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb, 60,
             &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
     }
 
-    void MoveNucStatCodonFitness2() {
-        Move::TwoProfiles(nucstat, 0.1, 1, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            codonfitness, 0.001, 10, &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb, 10,
-            &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::TwoProfiles(nucstat, 0.01, 2, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            codonfitness, 0.0001, 10, &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb, 10,
-            &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-    }
 
     //! MH move on codonfitnesses parameters
     void MoveCodonFitness() {
