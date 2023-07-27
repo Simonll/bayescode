@@ -962,20 +962,25 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
             CollectSitePathSuffStat();
 
-            if (!flatcodonfitness && !flatnucstat) {
+            if (!flatcodonfitness) {
+                MoveCodonFitness();
                 if (nucmode < 2) {
-                    MoveNucStatCodonFitness();
-                    MoveNucRR();
+                    if (!flatnucstat) {
+                        MoveNucStat();
+                        MoveNucRR();
+                    } else {
+                        MoveNucRR();
+                    }
                 }
-            } else if (flatcodonfitness && !flatnucstat) {
-                if (nucmode < 2) { MoveNucRates(); }
-            } else if (!flatcodonfitness && flatnucstat) {
+            } else {
                 if (nucmode < 2) {
-                    MoveCodonFitness();
-                    MoveNucRR();
+                    if (!flatnucstat) {
+                        MoveNucStat();
+                        MoveNucRR();
+                    } else {
+                        MoveNucRR();
+                    }
                 }
-            } else if (flatcodonfitness && flatnucstat) {
-                if (nucmode < 2) { MoveNucRR(); }
             }
 
             if (omegamode < 2) { MoveOmegaMixture(3); }
@@ -1044,13 +1049,13 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
     //! MH move on codonfitnesses parameters
     void MoveCodonFitness() {
-        Move::Profile(codonfitness, 0.1, 10, GetCodonStateSpace()->GetNstate(),
+        Move::Profile(codonfitness, 0.1, 1, GetCodonStateSpace()->GetNstate(),
             &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb,
             &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.01, 10, GetCodonStateSpace()->GetNstate(),
+        Move::Profile(codonfitness, 0.01, 1, GetCodonStateSpace()->GetNstate(),
             &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb,
             &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.001, 10, GetCodonStateSpace()->GetNstate(),
+        Move::Profile(codonfitness, 0.001, 1, GetCodonStateSpace()->GetNstate(),
             &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb,
             &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
     }
