@@ -256,7 +256,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     int omegamode;
 
     bool flatfitness;
-
+    bool flatnucstat;
     Chrono chrono;
     Chrono basechrono;
     Chrono totchrono;
@@ -280,7 +280,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     //! default: 1)
     CodonMutSelMultipleOmegaModel(std::string indatafile, std::string intreefile,
         std::string inprofilesfile, int inomegamode, int inNcat, int inbaseNcat, int inomegaNcat,
-        double inomegashift, bool inflatfitness, std::string indelta_omega_array_file)
+        double inomegashift, bool inflatfitness, std::string indelta_omega_array_file,
+        bool inflatnucstat)
         : datafile(std::move(indatafile)),
           treefile(std::move(intreefile)),
           profilesfile(std::move(inprofilesfile)),
@@ -290,7 +291,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
           baseNcat(inbaseNcat),
           Ncat(inNcat),
           omegamode(inomegamode),
-          flatfitness(inflatfitness) {
+          flatfitness(inflatfitness),
+          flatnucstat(inflatnucstat) {
         init();
         Update();
     }
@@ -854,7 +856,15 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
             CollectSitePathSuffStat();
 
-            if (nucmode < 2) { MoveNucRates(); }
+            if (nucmode < 2) {
+                if (!flatnucstat) {
+                    MoveNucStat();
+                } else {
+                    MoveNucStat();
+                    MoveNucRR();
+                }
+            }
+
 
             if (omegamode < 2) { MoveOmegaMixture(3); }
 
@@ -889,6 +899,22 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     void MoveBranchLengths() { ResampleBranchLengths(); }
 
     //! MH move on nucleotide rate parameters
+
+    void MoveNucRR() {
+        Move::Profile(nucrelrate, 0.1, 1, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.01, 3, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+    }
+
+    void MoveNucStat() {
+        Move::Profile(nucstat, 0.1, 1, 2, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucstat, 0.01, 3, 2, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+    }
+
+
     void MoveNucRates() {
         Move::Profile(nucrelrate, 0.1, 1, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);

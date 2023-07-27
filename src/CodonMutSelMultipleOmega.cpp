@@ -25,6 +25,7 @@ class CodonMutselArgParse : public BaseArgParse {
         "If smaller than the alignment size, site allocations are computed and `ncat` is given by "
         "the number of profiles in the file.",
         false, "Null", "string", cmd};
+    SwitchArg flatnucstat{"", "flatnucstat", "Nucleotide stationary are flattened. ", cmd, false};
     SwitchArg flatfitness{"", "flatfitness",
         "Fitness profiles are flattened (and `ncat` equals to 1). "
         "This option is not compatible with the option `profiles`.",
@@ -73,11 +74,12 @@ int main(int argc, char *argv[]) {
         cmd.parse();
         chain_driver =
             new ChainDriver(cmd.chain_name(), args.every.getValue(), args.until.getValue());
-        model = new CodonMutSelMultipleOmegaModel(args.alignment.getValue(),
-            args.treefile.getValue(), codonmutsel_args.profiles.getValue(),
-            codonmutsel_args.omegamode(), codonmutsel_args.ncat.getValue(), 1,
-            codonmutsel_args.omegancat.getValue(), codonmutsel_args.omegashift.getValue(),
-            codonmutsel_args.flatfitness.getValue(), codonmutsel_args.omegaarray.getValue());
+        model =
+            new CodonMutSelMultipleOmegaModel(args.alignment.getValue(), args.treefile.getValue(),
+                codonmutsel_args.profiles.getValue(), codonmutsel_args.omegamode(),
+                codonmutsel_args.ncat.getValue(), 1, codonmutsel_args.omegancat.getValue(),
+                codonmutsel_args.omegashift.getValue(), codonmutsel_args.flatfitness.getValue(),
+                codonmutsel_args.omegaarray.getValue(), codonmutsel_args.flatnucstat.getValue());
     }
 
     ConsoleLogger console_logger;
