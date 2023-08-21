@@ -15,7 +15,7 @@ class ReadAACodonMutSelDSBDPOmegaArgParse : public ReadArgParse {
     explicit ReadAACodonMutSelDSBDPOmegaArgParse(CmdLine& cmd) : ReadArgParse(cmd) {}
 
     SwitchArg nuc{"n", "nuc", "Mean posterior nucleotide matrix.", cmd};
-    SwitchArg codonfitness{"c", "codon",
+    SwitchArg codonfitness{"f", "codon",
         "Computes the mean posterior codon equilibrium frequencies"
         "(codon fitness profile).",
         cmd};
