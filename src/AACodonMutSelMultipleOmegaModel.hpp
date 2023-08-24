@@ -308,6 +308,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
     bool flataafitness;
     bool flatcodonfitness;
     bool flatnucstat;
+    bool flatnucrelrate;
 
     Chrono aachrono;
     Chrono basechrono;
@@ -447,7 +448,12 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
         // nucleotide mutation matrix
         nucrelrate.assign(Nrr, 0);
-        Random::DirichletSample(nucrelrate, std::vector<double>(Nrr, 1.0 / Nrr), ((double)Nrr));
+        if (flatnucrelrate) {
+            std::fill(nucrelrate.begin(), nucrelrate.end(), 1.0 / nucrelrate.size());
+        } else {
+            Random::DirichletSample(nucrelrate, std::vector<double>(Nrr, 1.0 / Nrr), ((double)Nrr));
+        }
+
         nucstat.assign(Nnuc, 0);
         if (flatnucstat) {
             std::fill(nucstat.begin(), nucstat.end(), 1.0 / nucstat.size());
@@ -659,6 +665,8 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
     bool FlatCodonFitness() const { return flatcodonfitness; }
 
     bool FlatNucStat() const { return flatnucstat; }
+
+    bool FlatNucRelRate() const { return flatnucrelrate; }
 
     double GetNucRR(int i) { return nucrelrate[i]; }
     double GetNucStat(int i) { return nucstat[i]; }
@@ -963,25 +971,11 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
             CollectSitePathSuffStat();
 
-            if (!flatcodonfitness) {
-                MoveCodonFitness();
-                if (nucmode < 2) {
-                    if (!flatnucstat) {
-                        MoveNucStat();
-                        MoveNucRR();
-                    } else {
-                        MoveNucRR();
-                    }
-                }
-            } else {
-                if (nucmode < 2) {
-                    if (!flatnucstat) {
-                        MoveNucStat();
-                        MoveNucRR();
-                    } else {
-                        MoveNucRR();
-                    }
-                }
+            if (!flatcodonfitness) { MoveCodonFitness(); }
+
+            if (nucmode < 2) {
+                if (!flatnucstat) { MoveNucStat(); }
+                if (!flatnucrelrate) { MoveNucRR(); }
             }
 
             if (omegamode < 2) { MoveOmegaMixture(3); }
@@ -995,7 +989,6 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
                 if (basemode < 2 and !clamp_profiles) { MoveBase(3); }
                 basechrono.Stop();
             }
-
 
             totchrono.Stop();
         }
@@ -1655,6 +1648,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         os << flataafitness << '\t';
         os << flatcodonfitness << '\t';
         os << flatnucstat << '\t';
+        os << flatnucrelrate << '\t';
         tracer->write_line(os);
     }
 
@@ -1676,6 +1670,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         is >> flataafitness;
         is >> flatcodonfitness;
         is >> flatnucstat;
+        is >> flatnucrelrate;
         init();
         tracer->read_line(is);
         Update();
