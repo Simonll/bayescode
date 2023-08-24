@@ -1049,13 +1049,16 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
     //! MH move on codonfitnesses parameters
     void MoveCodonFitness() {
-        Move::Profile(codonfitness, 0.1, 1, GetCodonStateSpace()->GetNstate(),
+        Move::Profile(codonfitness, 1.0, 1, 3,
             &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb,
             &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.01, 1, GetCodonStateSpace()->GetNstate(),
+        Move::Profile(codonfitness, 0.1, 1, 3,
             &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb,
             &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.001, 1, GetCodonStateSpace()->GetNstate(),
+        Move::Profile(codonfitness, 0.01, 3, 3,
+            &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb,
+            &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(codonfitness, 0.001, 3, 3,
             &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb,
             &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
     }
