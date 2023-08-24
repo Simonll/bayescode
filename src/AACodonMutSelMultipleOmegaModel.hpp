@@ -794,7 +794,8 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         total += Random::logDirichletDensity(
             codonfitness, codonfitnesshypercenter, 1.0 / codonfitnesshyperinvconc);
 
-        return total;
+        // return total;
+        return 0;
     }
 
     //! log prior over concentration parameters basekappa of mixture of base
