@@ -15,7 +15,7 @@ class AACodonMutSelCodonMatrixBidimArray : public BidimArray<SubMatrix>,
     //! constructor parameterized by an array of fitness profiles, a codon
     //! state space and a single nucleotide matrix.
     AACodonMutSelCodonMatrixBidimArray(const CodonStateSpace *incodonstatespace,
-        const SubMatrix *innucmatrix, const std::vector<double> incodonfitness,
+        const SubMatrix *innucmatrix, const std::vector<double> *incodonfitness,
         const Selector<std::vector<double>> *infitnessarray,
         const Selector<double> *indelta_omega_array, double inomega_shift)
         : codonstatespace(incodonstatespace),
@@ -49,12 +49,14 @@ class AACodonMutSelCodonMatrixBidimArray : public BidimArray<SubMatrix>,
         return *matrixarray[i][j];
     }
 
+    const std::vector<double> &GetCodonFitness() { return *codonfitness; }
+
     //! allocation and construction of all matrices
     void Create() {
         for (int i = 0; i < GetNrow(); i++) {
             for (int j = 0; j < GetNcol(); j++) {
                 matrixarray[i][j] = new AACodonMutSelOmegaCodonSubMatrix(codonstatespace, nucmatrix,
-                    codonfitness, aafitnessarray->GetVal(i), GetOmega(j), 1.0);
+                    GetCodonFitness(), aafitnessarray->GetVal(i), GetOmega(j), 1.0);
             }
         }
     }
@@ -97,7 +99,7 @@ class AACodonMutSelCodonMatrixBidimArray : public BidimArray<SubMatrix>,
   private:
     const CodonStateSpace *codonstatespace;
     const SubMatrix *nucmatrix;
-    const std::vector<double> codonfitness;
+    const std::vector<double> *codonfitness;
     const Selector<std::vector<double>> *aafitnessarray;
     const Selector<double> *delta_omega_array;
     double omega_shift;

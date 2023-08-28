@@ -464,16 +464,15 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
         // codonfitness
         codonfitness.assign(Nstate, 0);
-        codonfitnesshypercenter.assign(codonfitness.size(), 1.0 / codonfitness.size());
-        codonfitnesshyperinvconc = 1.0 / codonfitness.size();
+
+        codonfitnesshypercenter.assign(Nstate, 1.0 / Nstate);
+        codonfitnesshyperinvconc = 1.0 / Nstate;
 
 
         if (flatcodonfitness) {
             std::fill(codonfitness.begin(), codonfitness.end(), 1.0 / codonfitness.size());
         } else {
-            Random::DirichletSample(codonfitness,
-                std::vector<double>(codonfitness.size(), 1.0 / codonfitness.size()),
-                ((double)codonfitness.size()));
+            Random::DirichletSample(codonfitness, codonfitnesshypercenter, ((double)Nstate));
         }
 
         std::vector<double> codonprefs{};
@@ -572,7 +571,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         // Ncat*omegaNcat mut sel codon matrices (based on the Ncat fitness profiles of the mixture,
         // and the omegaNcat finite mixture for omega)
         componentcodonmatrixbidimarray =
-            new AACodonMutSelCodonMatrixBidimArray(GetCodonStateSpace(), nucmatrix, codonfitness,
+            new AACodonMutSelCodonMatrixBidimArray(GetCodonStateSpace(), nucmatrix, &codonfitness,
                 componentaafitnessarray, delta_omega_array, omega_shift);
 
         // Bidimselector, specifying which codon matrix should be used for each site
