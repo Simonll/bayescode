@@ -1029,16 +1029,41 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
     }
 
     //! MH move on codonfitnesses and nucstat parameters
-    void MoveNucStatCodonFitness() {
-        Move::TwoProfiles(nucstat, 0.05, 1, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            codonfitness, 0.01, 1, &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb, 10,
-            &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::TwoProfiles(nucstat, 0.01, 1, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            codonfitness, 0.005, 1, &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb, 60,
-            &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+    double MoveNucStatCodonFitness(double tuning, int n, int nrep) {
+        double nacc = 0;
+        double ntot = 0;
+        std::vector<double> BKCodonFitness(codonfitness.size(), 0);
+        std::vector<double> BKNucStat(nucstat.size(), 0);
+        for (int rep = 0; rep < nrep; rep++) {
+            BKCodonFitness = codonfitness;
+            BKNucStat = nucstat;
+
+            double deltalogprob = -CodonFitnessLogProb() - NucRatesLogProb();
+            Random::ProfileProposeMove(codonfitness, codonfitness.size(), tuning, n);
+            Random::ProfileProposeMove(nucstat, nucstat.size(), tuning, n);
+            UpdateMatrices();
+            deltalogprob += CodonFitnessLogProb() + NucRatesLogProb();
+
+            int accepted = (log(Random::Uniform()) < deltalogprob);
+            if (accepted) {
+                nacc++;
+            } else {
+                codonfitness = BKCodonFitness;
+                nucstat = BKNucStat;
+                UpdateMatrices();
+            }
+            ntot++;
+        }
+        return nacc / ntot;
     }
 
 
+    void MoveNucStatCodonFitness() {
+        MoveNucStatCodonFitness(1, 30, 10);
+        MoveNucStatCodonFitness(1 * 0.1, 30, 10);
+        MoveNucStatCodonFitness(1 * 0.01, 30, 10);
+        MoveNucStatCodonFitness(1 * 0.001, 30, 10);
+    }
     //! MH move on codonfitnesses parameters
     void MoveCodonFitness() {
         Move::Profile(codonfitness, 1.0, 1, 3,
