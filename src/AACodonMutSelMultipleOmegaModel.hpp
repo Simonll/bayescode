@@ -449,16 +449,16 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         // nucleotide mutation matrix
         nucrelrate.assign(Nrr, 0);
         if (flatnucrelrate) {
-            std::fill(nucrelrate.begin(), nucrelrate.end(), 1.0 / nucrelrate.size());
+            std::fill(nucrelrate.begin(), nucrelrate.end(), nucrelratehyperinvconc);
         } else {
-            Random::DirichletSample(nucrelrate, std::vector<double>(Nrr, 1.0 / Nrr), ((double)Nrr));
+            Random::DirichletSample(nucrelrate, nucrelratehypercenter, ((double)Nrr));
         }
 
         nucstat.assign(Nnuc, 0);
         if (flatnucstat) {
-            std::fill(nucstat.begin(), nucstat.end(), 1.0 / nucstat.size());
+            std::fill(nucstat.begin(), nucstat.end(), nucstathyperinvconc);
         } else {
-            Random::DirichletSample(nucstat, std::vector<double>(Nnuc, 1.0 / Nnuc), ((double)Nnuc));
+            Random::DirichletSample(nucstat, nucstathypercenter, ((double)Nnuc));
         }
         nucmatrix = new GTRSubMatrix(Nnuc, nucrelrate, nucstat, true);
 
@@ -470,7 +470,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
 
         if (flatcodonfitness) {
-            std::fill(codonfitness.begin(), codonfitness.end(), 1.0 / codonfitness.size());
+            std::fill(codonfitness.begin(), codonfitness.end(), codonfitnesshyperinvconc);
         } else {
             Random::DirichletSample(codonfitness, codonfitnesshypercenter, ((double)Nstate));
         }
@@ -801,8 +801,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         total += Random::logDirichletDensity(
             codonfitness, codonfitnesshypercenter, 1.0 / codonfitnesshyperinvconc);
 
-        // return total;
-        return 0;
+        return total;
     }
 
     //! log prior over concentration parameters basekappa of mixture of base
