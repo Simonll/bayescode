@@ -972,7 +972,10 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
             if (!flatcodonfitness) { MoveCodonFitness(); }
 
             if (nucmode < 2) {
-                if (!flatnucstat) { MoveNucStat(); }
+                if (!flatnucstat) {
+                    MoveNucStat();
+                    if (!flatcodonfitness) { MoveNucStatCodonFitness(); }
+                }
                 if (!flatnucrelrate) { MoveNucRR(); }
             }
 
