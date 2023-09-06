@@ -626,10 +626,8 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "lnL", [this]() { return GetLogLikelihood(); });
         // 3x: per coding site (and not per nucleotide site)
         model_stat(info, "length", [this]() { return 3 * branchlength->GetTotalLength(); });
-        model_stat(info, "ds", [this]() { return GetPredictedEffectivedS(); });
-        model_stat(info, "dnds", [this]() { return GetPredictedEffectivedNdS(); });
-        model_stat(info, "omega0", [this]() { return GetPredictedOmegaKnot(); });
-        model_stat(info, "omega", [this]() { return GetMeanOmega(); });
+        model_stat(info, "ds", [this]() { return GetPredictedRelativedS(); });
+        model_stat(info, "dnds", [this]() { return GetPredictedRelativedNdS(); });
         model_stat(
             info, "omegaent", [this]() { return Random::GetEntropy(omega_weight->GetArray()); });
         model_stat(info, "ncluster", [this]() { return GetNcluster(); });
@@ -1658,6 +1656,25 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         mean /= GetNsite();
         return mean;
     }
+
+    double GetPredictedRelativedNdS() const {
+        double mean = 0;
+        for (int i = 0; i < GetNsite(); i++) {
+            mean += GetSiteOmega(i) * sitecodonsubmatrixarray->GetVal(i).GetPredictedRelativeDNDS();
+        }
+        mean /= GetNsite();
+        return mean;
+    }
+
+    double GetPredictedRelativedS() const {
+        double mean = 0;
+        for (int i = 0; i < GetNsite(); i++) {
+            mean += sitecodonsubmatrixarray->GetVal(i).GetPredictedRelativeDS();
+        }
+        mean /= GetNsite();
+        return mean;
+    }
+
 
     const std::vector<double> &GetProfile(int i) const { return siteaafitnessarray->GetVal(i); }
 

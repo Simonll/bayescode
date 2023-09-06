@@ -61,9 +61,15 @@ class AACodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
     }
 
     std::tuple<double, double> GetFlowDNDS() const;
+    std::tuple<double, double> GetRelativeFlowDNDS() const;
+
     double GetPredictedDNDS() const;
 
     double GetPredictedDS() const;
+
+    double GetPredictedRelativeDNDS() const;
+
+    double GetPredictedRelativeDS() const;
 
     void CorruptMatrixNoFitnessRecomput() { SubMatrix::CorruptMatrix(); }
 
