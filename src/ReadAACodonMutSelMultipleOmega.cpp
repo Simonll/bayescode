@@ -276,7 +276,7 @@ int main(int argc, char* argv[]) {
                             double tmp = min + ((double)c * bin) - bin / 2 + bin;
                             do {
                                 c++;
-                                tmp = min + ((double)(c)*bin) - bin / 2 + bin;
+                                tmp = min + ((double)c * bin) - bin / 2 + bin;
                             } while (tmp < deltaS);
                         }
                         if (c == Ncat) {
