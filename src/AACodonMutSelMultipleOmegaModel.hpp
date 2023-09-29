@@ -1675,6 +1675,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         return mean;
     }
 
+    const Tree &GetTree() const { return *tree; }
 
     const std::vector<double> &GetProfile(int i) const { return siteaafitnessarray->GetVal(i); }
 

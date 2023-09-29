@@ -29,6 +29,7 @@ class MutselArgParse : public BaseArgParse {
         "File path the codonfitness profiles (tsv or csv), thus considered fixed. "
         "the number of profiles in the file.",
         false, "Null", "string", cmd};
+    SwitchArg simu{"", "for_simulation", "Prepare files for jump chain simulations", cmd, false};
     SwitchArg flatfitness{"", "flatfitness",
         "Fitness profiles are flattened (and `ncat` equals to 1). "
         "This option is not compatible with the option `profiles`.",
@@ -55,6 +56,8 @@ class MutselArgParse : public BaseArgParse {
         "File path to ω values (one ω per line), thus considered fixed. "
         "`freeomega` is overridden to false and `omegancat` equals to the number of ω in the file.",
         false, "Null", "string", cmd};
+
+    
 
     //! - omegamode: omega fixed (3), shared across genes (2) or estimated with
     //! shrinkage across genes (1) or without shrinkage (0)

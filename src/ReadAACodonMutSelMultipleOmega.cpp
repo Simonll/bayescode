@@ -6,6 +6,7 @@
 #include "components/ReadArgParse.hpp"
 #include "components/stats_posterior.hpp"
 #include "tclap/CmdLine.h"
+#include "tree/export.hpp"
 
 using namespace std;
 using namespace TCLAP;
@@ -32,6 +33,7 @@ class ReadAACodonMutSelDSBDPOmegaArgParse : public ReadArgParse {
         "(amino-acid fitness profiles).",
         cmd};
     SwitchArg sel{"d", "distribution", "Computes scaled selection coefficients", cmd};
+    SwitchArg simu{"", "for_simulation", "Prepare files for jump chain simulations", cmd};
     ValueArg<double> omega_pp{"", "omega_threshold",
         "Threshold to compute the mean posterior probability that ω⁎ "
         "(or ω if option `flatfitness` is used in `mutselomega`) is greater than a given value.",
@@ -47,6 +49,7 @@ int main(int argc, char* argv[]) {
     int burnin = read_args.GetBurnIn();
     int every = read_args.GetEvery();
     int size = read_args.GetSize();
+
 
     ifstream is{chain_name + ".param"};
     ChainDriver::fake_read(is);  // We're not interested in the ChainDriver of the param file
@@ -178,6 +181,17 @@ int main(int argc, char* argv[]) {
               "CT\tGCC\tGCA\tGCG\tGAT\tGAC\tGAA\tGAG\tGGT\tGGC\tGGA\tGGG\n";
         for (int i = 0; i < Nstate; i++) { os << codonfitness[i] / size; }
         cerr << '\n';
+    } else if (read_args.simu.getValue()) {
+        for (int step = 0; step < size; step++) {
+            cerr << '.';
+            cr.skip(every);
+            string filename{chain_name + "_" + std::to_string(step) + ".tree"};
+            std::ofstream os(filename.c_str());
+            ExportTree export_tree(model.GetTree());
+            os << export_tree.as_string() << std::endl;
+            os.close();
+        }
+
     } else if (read_args.sel.getValue()) {
         int Ncat = 241;
         double min = -30;
