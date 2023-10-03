@@ -182,10 +182,12 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < Nstate; i++) { os << codonfitness[i] / size; }
         cerr << '\n';
     } else if (read_args.simu.getValue()) {
+        string filename{chain_name + ".pvalues"};
+        std::ofstream os(filename.c_str());
+        os << model.GetNsite() << '\n';
         for (int step = 0; step < size; step++) {
             cerr << '.';
             cr.skip(every);
-
             ExportTree export_tree(model.GetTree());
             for (Tree::NodeIndex node = 0; node < Tree::NodeIndex(model.GetTree().nb_nodes());
                  node++) {
@@ -193,14 +195,49 @@ int main(int argc, char* argv[]) {
                     export_tree.set_tag(node, "length", to_string(model.GetBranchLength(node)));
                 }
             }
-
-            string filename{chain_name + "_" + std::to_string(step) + ".tree"};
-            std::ofstream os(filename.c_str());
-            os << export_tree.as_string() << std::endl;
-            os.close();
+            os << export_tree.as_string() << '\n';
+            for (int i = 0; i < Nnuc; i++) {
+                if (i != Nnuc - 1) {
+                    os << model.GetNucStat(i) << '\t';
+                } else {
+                    os << model.GetNucStat(i) << '\n';
+                }
+            }
+            for (int i = 0; i < Nrr; i++) {
+                if (i != Nrr - 1) {
+                    os << model.GetNucRR(i) << '\t';
+                } else {
+                    os << model.GetNucRR(i) << '\n';
+                }
+            }
+            for (int i = 0; i < Nstate; i++) {
+                if (i != Nstate - 1) {
+                    os << model.GetCodonFitness(i) << '\t';
+                } else {
+                    os << model.GetCodonFitness(i) << '\n';
+                }
+            }
+            for (int i = 0; i < model.GetNsite(); i++) {
+                for (int j = 0; j < Naa; j++) {
+                    if (j != Naa - 1) {
+                        os << model.GetAASiteFitness(i, j) << '\t';
+                    } else {
+                        os << model.GetAASiteFitness(i, j) << '\n';
+                    }
+                }
+            }
+            for (int i = 0; i < model.GetNsite(); i++) {
+                if (i != model.GetNsite() - 1) {
+                    os << model.GetSiteOmega(i) << '\t';
+                } else {
+                    os << model.GetSiteOmega(i) << '\n';
+                }
+            }
         }
+        os.close();
+    }
 
-    } else if (read_args.sel.getValue()) {
+    else if (read_args.sel.getValue()) {
         int Ncat = 241;
         double min = -30;
         double max = 30;

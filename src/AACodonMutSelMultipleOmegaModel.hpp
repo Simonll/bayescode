@@ -665,11 +665,30 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
     bool FlatNucRelRate() const { return flatnucrelrate; }
 
-    double GetNucRR(int i) { return nucrelrate[i]; }
-    double GetNucStat(int i) { return nucstat[i]; }
 
-    double GetCodonFitness(int i) { return codonfitness[i]; }
+    //! return branch length
+    double GetBranchLength(Tree::NodeIndex node) const {
+        assert(!tree->is_root(node));
+        return branchlength->GetVal(tree->branch_index(node));
+    }
+
+    double GetNucRR(int i) {
+        assert(i < Nrr);
+        return nucrelrate[i];
+    }
+    double GetNucStat(int i) {
+        assert(i < Nnuc);
+        return nucstat[i];
+    }
+
+    double GetCodonFitness(int i) {
+        assert(i < Nstate);
+        return codonfitness[i];
+    }
+
     double GetAASiteFitness(int site, int i) {
+        assert(i < Naa);
+        assert(site < Nsite);
         return siteaafitnessarray->GetVal(profile_alloc->GetVal(site))[i];
     }
 
@@ -1556,13 +1575,6 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
     //-------------------
     // Traces and Monitors
     // ------------------
-
-
-    //! return branch length
-    double GetBranchLength(Tree::NodeIndex node) const {
-        assert(!tree->is_root(node));
-        return branchlength->GetVal(tree->branch_index(node));
-    }
 
     //! return mutation rate between nucleotides from the mutation matrix
     double GetNucRate(int i, int j) const {
