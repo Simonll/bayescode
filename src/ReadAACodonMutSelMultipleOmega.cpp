@@ -185,9 +185,17 @@ int main(int argc, char* argv[]) {
         for (int step = 0; step < size; step++) {
             cerr << '.';
             cr.skip(every);
+
+            ExportTree export_tree(model.GetTree());
+            for (Tree::NodeIndex node = 0; node < Tree::NodeIndex(model.GetTree().nb_nodes());
+                 node++) {
+                if (!model.GetTree().is_root(node)) {
+                    export_tree.set_tag(node, "length", to_string(model.GetBranchLength(node)));
+                }
+            }
+
             string filename{chain_name + "_" + std::to_string(step) + ".tree"};
             std::ofstream os(filename.c_str());
-            ExportTree export_tree(model.GetTree());
             os << export_tree.as_string() << std::endl;
             os.close();
         }

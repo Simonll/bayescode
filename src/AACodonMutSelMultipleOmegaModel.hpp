@@ -1557,6 +1557,13 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
     // Traces and Monitors
     // ------------------
 
+
+    //! return branch length
+    double GetBranchLength(Tree::NodeIndex node) const {
+        assert(!tree->is_root(node));
+        return branchlength->GetVal(tree->branch_index(node));
+    }
+
     //! return mutation rate between nucleotides from the mutation matrix
     double GetNucRate(int i, int j) const {
         nucmatrix->UpdateMatrix();
