@@ -16,6 +16,8 @@
 #include "components/model_decl_utils.hpp"
 #include "lib/Dirichlet.hpp"
 
+#define CLASS_NAME(class_name) #class_name
+
 /**
  * \brief The mutation-selection model with constant fitness landscape over the
  * tree -- double Dirichlet process version.
@@ -184,7 +186,7 @@ std::vector<double> open_codonpreferences(std::string const &file_name, int Nsta
 }
 
 
-class AACodonMutSelMultipleOmegaModel : public ChainComponent {
+class AACodonMutSelMultipleOmega : public ChainComponent {
     std::string datafile, treefile, aaprofilesfile{"Null"}, codonfitnessfile{"Null"};
     bool clamp_profiles{false}, clamp_profiles_allocation{false};
     bool clamp_codonfitness{false};
@@ -331,7 +333,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
     //! 100)
     //! - baseNcat: truncation of the second-level stick-breaking process (by
     //! default: 1)
-    AACodonMutSelMultipleOmegaModel(std::string indatafile, std::string intreefile,
+    AACodonMutSelMultipleOmega(std::string indatafile, std::string intreefile,
         std::string inaaprofilesfile, std::string incodonprofilesfile, int inomegamode, int inNcat,
         int inbaseNcat, int inomegaNcat, double inomegashift, bool inflatfitness,
         bool inflatcodonfitness, std::string indelta_omega_array_file, bool inflatnucstat)
@@ -352,7 +354,7 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         Update();
     }
 
-    ~AACodonMutSelMultipleOmegaModel() override = default;
+    ~AACodonMutSelMultipleOmega() override = default;
 
     void init() {
         blmode = 0;
@@ -1035,17 +1037,17 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
     }
 
     void MoveNucRR() {
-        Move::Profile(nucrelrate, 0.1, 1, 3, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.01, 3, 3, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.1, 1, 3, &AACodonMutSelMultipleOmega::NucRatesLogProb,
+            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.01, 3, 3, &AACodonMutSelMultipleOmega::NucRatesLogProb,
+            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
     }
 
     void MoveNucStat() {
-        Move::Profile(nucstat, 0.1, 1, 2, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.01, 3, 2, &AACodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucstat, 0.1, 1, 2, &AACodonMutSelMultipleOmega::NucRatesLogProb,
+            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
+        Move::Profile(nucstat, 0.01, 3, 2, &AACodonMutSelMultipleOmega::NucRatesLogProb,
+            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
     }
 
     //! MH move on codonfitnesses and nucstat parameters
@@ -1086,18 +1088,14 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
     }
     //! MH move on codonfitnesses parameters
     void MoveCodonFitness() {
-        Move::Profile(codonfitness, 1.0, 1, 3,
-            &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb,
-            &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.1, 1, 3,
-            &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb,
-            &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.01, 3, 3,
-            &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb,
-            &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.001, 3, 3,
-            &AACodonMutSelMultipleOmegaModel::CodonFitnessLogProb,
-            &AACodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(codonfitness, 1.0, 1, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
+            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
+        Move::Profile(codonfitness, 0.1, 1, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
+            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
+        Move::Profile(codonfitness, 0.01, 3, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
+            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
+        Move::Profile(codonfitness, 0.001, 3, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
+            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
     }
 
     //! MCMC module for the mixture amino-acid fitness profiles
@@ -1298,10 +1296,10 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
     //! MH move on kappa, concentration parameter of the mixture
     void MoveKappa() {
-        Move::Scaling(kappa, 1.0, 10, &AACodonMutSelMultipleOmegaModel::StickBreakingHyperLogProb,
-            &AACodonMutSelMultipleOmegaModel::NoUpdate, this);
-        Move::Scaling(kappa, 0.3, 10, &AACodonMutSelMultipleOmegaModel::StickBreakingHyperLogProb,
-            &AACodonMutSelMultipleOmegaModel::NoUpdate, this);
+        Move::Scaling(kappa, 1.0, 10, &AACodonMutSelMultipleOmega::StickBreakingHyperLogProb,
+            &AACodonMutSelMultipleOmega::NoUpdate, this);
+        Move::Scaling(kappa, 0.3, 10, &AACodonMutSelMultipleOmega::StickBreakingHyperLogProb,
+            &AACodonMutSelMultipleOmega::NoUpdate, this);
     }
 
     //! MCMC module for the base mixture
@@ -1454,11 +1452,11 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
     //! MH move on basekappa, concentration parameter of the base mixture
     void MoveBaseKappa() {
         Move::Scaling(basekappa, 1.0, 10,
-            &AACodonMutSelMultipleOmegaModel::BaseStickBreakingHyperLogProb,
-            &AACodonMutSelMultipleOmegaModel::NoUpdate, this);
+            &AACodonMutSelMultipleOmega::BaseStickBreakingHyperLogProb,
+            &AACodonMutSelMultipleOmega::NoUpdate, this);
         Move::Scaling(basekappa, 0.3, 10,
-            &AACodonMutSelMultipleOmegaModel::BaseStickBreakingHyperLogProb,
-            &AACodonMutSelMultipleOmegaModel::NoUpdate, this);
+            &AACodonMutSelMultipleOmega::BaseStickBreakingHyperLogProb,
+            &AACodonMutSelMultipleOmega::NoUpdate, this);
     }
 
     //! MCMC module for the mixture of omega
@@ -1557,17 +1555,17 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
     void MoveOmegaHyper() {
         if (omegaNcat > 1) {
             Move::Scaling(delta_omegahypermean, 1.0, 10,
-                &AACodonMutSelMultipleOmegaModel::DeltaOmegaLogProb,
-                &AACodonMutSelMultipleOmegaModel::NoUpdate, this);
+                &AACodonMutSelMultipleOmega::DeltaOmegaLogProb,
+                &AACodonMutSelMultipleOmega::NoUpdate, this);
             Move::Scaling(delta_omegahypermean, 0.3, 10,
-                &AACodonMutSelMultipleOmegaModel::DeltaOmegaLogProb,
-                &AACodonMutSelMultipleOmegaModel::NoUpdate, this);
+                &AACodonMutSelMultipleOmega::DeltaOmegaLogProb,
+                &AACodonMutSelMultipleOmega::NoUpdate, this);
             Move::Scaling(delta_omegahyperinvshape, 1.0, 10,
-                &AACodonMutSelMultipleOmegaModel::DeltaOmegaLogProb,
-                &AACodonMutSelMultipleOmegaModel::NoUpdate, this);
+                &AACodonMutSelMultipleOmega::DeltaOmegaLogProb,
+                &AACodonMutSelMultipleOmega::NoUpdate, this);
             Move::Scaling(delta_omegahyperinvshape, 0.3, 10,
-                &AACodonMutSelMultipleOmegaModel::DeltaOmegaLogProb,
-                &AACodonMutSelMultipleOmegaModel::NoUpdate, this);
+                &AACodonMutSelMultipleOmega::DeltaOmegaLogProb,
+                &AACodonMutSelMultipleOmega::NoUpdate, this);
         }
     }
 
@@ -1698,8 +1696,10 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
 
     const std::vector<double> &GetProfile(int i) const { return siteaafitnessarray->GetVal(i); }
 
-    void ToStream(std::ostream &os) const {
-        os << "AACodonMutSelMultipleOmega" << '\t';
+    static std::string GetModelName() { return CLASS_NAME(AACodonMutSelMultipleOmega); }
+
+    void GetModelStamp(std::ostream &os) const {
+        os << GetModelName() << '\t';
         os << datafile << '\t' << treefile << '\t' << aaprofilesfile << '\t' << codonfitnessfile
            << '\t';
         os << delta_omega_array_file << '\t';
@@ -1712,14 +1712,18 @@ class AACodonMutSelMultipleOmegaModel : public ChainComponent {
         os << flatcodonfitness << '\t';
         os << flatnucstat << '\t';
         os << flatnucrelrate << '\t';
+    }
+
+    void ToStream(std::ostream &os) const {
+        GetModelStamp(os);
         tracer->write_line(os);
     }
 
-    AACodonMutSelMultipleOmegaModel(std::istream &is) {
+    AACodonMutSelMultipleOmega(std::istream &is) {
         std::string model_name;
         is >> model_name;
-        if (model_name != "AACodonMutSelMultipleOmega") {
-            std::cerr << "Expected AACodonMutSelMultipleOmega for model name, got " << model_name
+        if (model_name != GetModelName()) {
+            std::cerr << "Expected " << GetModelName() << " for model name, got " << model_name
                       << "\n";
             exit(1);
         }

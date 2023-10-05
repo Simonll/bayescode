@@ -41,7 +41,7 @@ class ReadAACodonMutSelDSBDPOmegaArgParse : public ReadArgParse {
 };
 
 int main(int argc, char* argv[]) {
-    CmdLine cmd{"AACodonMutSelMultipleOmega", ' ', "0.1"};
+    CmdLine cmd{AACodonMutSelMultipleOmega::GetModelName(), ' ', "0.1"};
     ReadAACodonMutSelDSBDPOmegaArgParse read_args(cmd);
     cmd.parse(argc, argv);
 
@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
 
     ifstream is{chain_name + ".param"};
     ChainDriver::fake_read(is);  // We're not interested in the ChainDriver of the param file
-    AACodonMutSelMultipleOmegaModel model(is);
+    AACodonMutSelMultipleOmega model(is);
     ChainReader cr{model, chain_name + ".chain"};
     int Nstate = model.GetCodonStateSpace()->GetNstate();
     cr.skip(burnin);
@@ -184,7 +184,8 @@ int main(int argc, char* argv[]) {
     } else if (read_args.simu.getValue()) {
         string filename{chain_name + ".pvalues"};
         std::ofstream os(filename.c_str());
-        os << model.GetNsite() << '\n';
+        model.GetModelStamp(os);
+        os << '\n';
         for (int step = 0; step < size; step++) {
             cerr << '.';
             cr.skip(every);

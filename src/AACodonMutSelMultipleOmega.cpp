@@ -57,7 +57,6 @@ class MutselArgParse : public BaseArgParse {
         "`freeomega` is overridden to false and `omegancat` equals to the number of ω in the file.",
         false, "Null", "string", cmd};
 
-    
 
     //! - omegamode: omega fixed (3), shared across genes (2) or estimated with
     //! shrinkage across genes (1) or without shrinkage (0)
@@ -71,15 +70,15 @@ class MutselArgParse : public BaseArgParse {
 };
 
 int main(int argc, char *argv[]) {
-    ChainCmdLine cmd{argc, argv, "AACodonMutSelMultipleOmega", ' ', "1.1.2"};
+    ChainCmdLine cmd{argc, argv, AACodonMutSelMultipleOmega::GetModelName(), ' ', "1.1.2"};
 
     ChainDriver *chain_driver = nullptr;
-    AACodonMutSelMultipleOmegaModel *model = nullptr;
+    AACodonMutSelMultipleOmega *model = nullptr;
 
     if (cmd.resume_from_checkpoint()) {
         std::ifstream is = cmd.checkpoint_file();
         chain_driver = new ChainDriver(is);
-        model = new AACodonMutSelMultipleOmegaModel(is);
+        model = new AACodonMutSelMultipleOmega(is);
         check_restart(*model, cmd.chain_name() + ".trace");
     } else {
         InferenceAppArgParse args(cmd);
@@ -87,13 +86,12 @@ int main(int argc, char *argv[]) {
         cmd.parse();
         chain_driver =
             new ChainDriver(cmd.chain_name(), args.every.getValue(), args.until.getValue());
-        model =
-            new AACodonMutSelMultipleOmegaModel(args.alignment.getValue(), args.treefile.getValue(),
-                mutsel_args.profiles.getValue(), mutsel_args.codonfitness.getValue(),
-                mutsel_args.omegamode(), mutsel_args.ncat.getValue(), 1,
-                mutsel_args.omegancat.getValue(), mutsel_args.omegashift.getValue(),
-                mutsel_args.flatfitness.getValue(), mutsel_args.flatcodonfitness.getValue(),
-                mutsel_args.omegaarray.getValue(), mutsel_args.flatnucstat.getValue());
+        model = new AACodonMutSelMultipleOmega(args.alignment.getValue(), args.treefile.getValue(),
+            mutsel_args.profiles.getValue(), mutsel_args.codonfitness.getValue(),
+            mutsel_args.omegamode(), mutsel_args.ncat.getValue(), 1,
+            mutsel_args.omegancat.getValue(), mutsel_args.omegashift.getValue(),
+            mutsel_args.flatfitness.getValue(), mutsel_args.flatcodonfitness.getValue(),
+            mutsel_args.omegaarray.getValue(), mutsel_args.flatnucstat.getValue());
     }
 
     ConsoleLogger console_logger;
