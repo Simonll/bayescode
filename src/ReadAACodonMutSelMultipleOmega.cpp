@@ -218,20 +218,34 @@ int main(int argc, char* argv[]) {
                     os << model.GetCodonFitness(i) << '\n';
                 }
             }
-            for (int i = 0; i < model.GetNsite(); i++) {
+            for (int i = 0; i < model.GetNcat(); i++) {
                 for (int j = 0; j < Naa; j++) {
                     if (j != Naa - 1) {
-                        os << model.GetAASiteFitness(i, j) << '\t';
+                        os << model.GetProfileAA(i, j) << '\t';
                     } else {
-                        os << model.GetAASiteFitness(i, j) << '\n';
+                        os << model.GetProfileAA(i, j) << '\n';
                     }
                 }
             }
             for (int i = 0; i < model.GetNsite(); i++) {
                 if (i != model.GetNsite() - 1) {
-                    os << model.GetSiteOmega(i) << '\t';
+                    os << model.GetProfileAlloc(i) << '\t';
                 } else {
-                    os << model.GetSiteOmega(i) << '\n';
+                    os << model.GetProfileAlloc(i) << '\n';
+                }
+            }
+            for (int i = 0; i < model.GetOmegaNcat(); i++) {
+                if (i != model.GetOmegaNcat() - 1) {
+                    os << model.GetOmega(i) << '\t';
+                } else {
+                    os << model.GetOmega(i) << '\n';
+                }
+            }
+            for (int i = 0; i < model.GetNsite(); i++) {
+                if (i != model.GetNsite() - 1) {
+                    os << model.GetOmegaAlloc(i) << '\t';
+                } else {
+                    os << model.GetOmegaAlloc(i) << '\n';
                 }
             }
         }

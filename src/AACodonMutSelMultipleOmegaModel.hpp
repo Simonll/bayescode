@@ -1694,6 +1694,15 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
 
     const Tree &GetTree() const { return *tree; }
 
+    const int GetNcat() const { return Ncat; }
+
+    const int GetOmegaNcat() const { return omegaNcat; }
+
+    const double GetProfileAA(int i, int a) const { return componentaafitnessarray->GetVal(i)[a]; }
+    const int GetProfileAlloc(int i) const { return profile_alloc->GetVal(i); }
+    const double GetOmega(int i) const { return delta_omega_array->GetVal(i); }
+    const int GetOmegaAlloc(int i) const { return omega_alloc->GetVal(i); }
+
     const std::vector<double> &GetProfile(int i) const { return siteaafitnessarray->GetVal(i); }
 
     static std::string GetModelName() { return CLASS_NAME(AACodonMutSelMultipleOmega); }
