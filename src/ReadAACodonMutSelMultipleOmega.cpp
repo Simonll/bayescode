@@ -189,6 +189,7 @@ int main(int argc, char* argv[]) {
         for (int step = 0; step < size; step++) {
             cerr << '.';
             cr.skip(every);
+            os << model.GetPredictedRelativedS() << "\t" << model.GetPredictedRelativedN() << "\n";
             ExportTree export_tree(model.GetTree());
             for (Tree::NodeIndex node = 0; node < Tree::NodeIndex(model.GetTree().nb_nodes());
                  node++) {

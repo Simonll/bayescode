@@ -1683,6 +1683,15 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         return mean;
     }
 
+    double GetPredictedRelativedN() const {
+        double mean = 0;
+        for (int i = 0; i < GetNsite(); i++) {
+            mean += GetSiteOmega(i) * sitecodonsubmatrixarray->GetVal(i).GetPredictedRelativeDN();
+        }
+        mean /= GetNsite();
+        return mean;
+    }
+
     double GetPredictedRelativedS() const {
         double mean = 0;
         for (int i = 0; i < GetNsite(); i++) {

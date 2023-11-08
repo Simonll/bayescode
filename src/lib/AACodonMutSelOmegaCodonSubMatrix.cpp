@@ -205,6 +205,12 @@ double AACodonMutSelOmegaCodonSubMatrix::GetPredictedRelativeDNDS() const {
     return dn / ds;
 }
 
+double AACodonMutSelOmegaCodonSubMatrix::GetPredictedRelativeDN() const {
+    double dn = 0, ds = 0;
+    std::tie(dn, ds) = GetRelativeFlowDNDS();
+    return dn;
+}
+
 double AACodonMutSelOmegaCodonSubMatrix::GetPredictedRelativeDS() const {
     double dn = 0, ds = 0;
     std::tie(dn, ds) = GetRelativeFlowDNDS();

@@ -69,6 +69,8 @@ class AACodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
 
     double GetPredictedRelativeDNDS() const;
 
+    double GetPredictedRelativeDN() const;
+
     double GetPredictedRelativeDS() const;
 
     void CorruptMatrixNoFitnessRecomput() { SubMatrix::CorruptMatrix(); }
