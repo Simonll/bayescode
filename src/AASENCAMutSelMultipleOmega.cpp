@@ -1,6 +1,6 @@
 #include <cmath>
 #include <fstream>
-#include "AACodonMutSelMultipleOmegaModel.hpp"
+#include "AASENCAMutSelMultipleOmegaModel.hpp"
 #include "components/ChainCheckpoint.hpp"
 #include "components/ChainDriver.hpp"
 #include "components/ConsoleLogger.hpp"
@@ -70,15 +70,15 @@ class MutselArgParse : public BaseArgParse {
 };
 
 int main(int argc, char *argv[]) {
-    ChainCmdLine cmd{argc, argv, AACodonMutSelMultipleOmega::GetModelName(), ' ', "1.1.2"};
+    ChainCmdLine cmd{argc, argv, AASENCAMutSelMultipleOmega::GetModelName(), ' ', "1.1.2"};
 
     ChainDriver *chain_driver = nullptr;
-    AACodonMutSelMultipleOmega *model = nullptr;
+    AASENCAMutSelMultipleOmega *model = nullptr;
 
     if (cmd.resume_from_checkpoint()) {
         std::ifstream is = cmd.checkpoint_file();
         chain_driver = new ChainDriver(is);
-        model = new AACodonMutSelMultipleOmega(is);
+        model = new AASENCAMutSelMultipleOmega(is);
         check_restart(*model, cmd.chain_name() + ".trace");
     } else {
         InferenceAppArgParse args(cmd);
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
         cmd.parse();
         chain_driver =
             new ChainDriver(cmd.chain_name(), args.every.getValue(), args.until.getValue());
-        model = new AACodonMutSelMultipleOmega(args.alignment.getValue(), args.treefile.getValue(),
+        model = new AASENCAMutSelMultipleOmega(args.alignment.getValue(), args.treefile.getValue(),
             mutsel_args.profiles.getValue(), mutsel_args.codonfitness.getValue(),
             mutsel_args.omegamode(), mutsel_args.ncat.getValue(), 1,
             mutsel_args.omegancat.getValue(), mutsel_args.omegashift.getValue(),

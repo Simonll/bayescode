@@ -1,4 +1,4 @@
-#include "AACodonMutSelCodonMatrixBidimArray.hpp"
+#include "AASENCAMutSelCodonMatrixBidimArray.hpp"
 #include "Chrono.hpp"
 #include "CodonSequenceAlignment.hpp"
 #include "CodonSuffStat.hpp"
@@ -186,7 +186,7 @@ std::vector<double> open_codonpreferences(std::string const &file_name, int Nsta
 }
 
 
-class AACodonMutSelMultipleOmega : public ChainComponent {
+class AASENCAMutSelMultipleOmega : public ChainComponent {
     std::string datafile, treefile, aaprofilesfile{"Null"}, codonfitnessfile{"Null"};
     bool clamp_profiles{false}, clamp_profiles_allocation{false};
     bool clamp_codonfitness{false};
@@ -280,11 +280,11 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
     MultinomialAllocationVector *profile_alloc;
 
     // an array of codon matrices (one for each distinct aa fitness profile)
-    AACodonMutSelCodonMatrixBidimArray *componentcodonmatrixbidimarray;
+    AASENCAMutSelCodonMatrixBidimArray *componentcodonmatrixbidimarray;
 
     // this one is used by PhyloProcess: has to be a Selector<SubMatrix>
     DoubleMixtureSelector<SubMatrix> *sitesubmatrixarray;
-    DoubleMixtureSelector<AACodonMutSelOmegaCodonSubMatrix> *sitecodonsubmatrixarray;
+    DoubleMixtureSelector<AASENCAMutSelOmegaCodonSubMatrix> *sitecodonsubmatrixarray;
 
     MixtureSelector<std::vector<double>> *siteaafitnessarray;
 
@@ -333,7 +333,7 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
     //! 100)
     //! - baseNcat: truncation of the second-level stick-breaking process (by
     //! default: 1)
-    AACodonMutSelMultipleOmega(std::string indatafile, std::string intreefile,
+    AASENCAMutSelMultipleOmega(std::string indatafile, std::string intreefile,
         std::string inaaprofilesfile, std::string incodonprofilesfile, int inomegamode, int inNcat,
         int inbaseNcat, int inomegaNcat, double inomegashift, bool inflatfitness,
         bool inflatcodonfitness, std::string indelta_omega_array_file, bool inflatnucstat)
@@ -354,7 +354,7 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         Update();
     }
 
-    ~AACodonMutSelMultipleOmega() override = default;
+    ~AASENCAMutSelMultipleOmega() override = default;
 
     void init() {
         blmode = 0;
@@ -573,7 +573,7 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         // Ncat*omegaNcat mut sel codon matrices (based on the Ncat fitness profiles of the mixture,
         // and the omegaNcat finite mixture for omega)
         componentcodonmatrixbidimarray =
-            new AACodonMutSelCodonMatrixBidimArray(GetCodonStateSpace(), nucmatrix, &codonfitness,
+            new AASENCAMutSelCodonMatrixBidimArray(GetCodonStateSpace(), nucmatrix, &codonfitness,
                 componentaafitnessarray, delta_omega_array, omega_shift);
 
         // Bidimselector, specifying which codon matrix should be used for each site
@@ -582,7 +582,7 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
 
         // Bidimselector, specifying which codon matrix should be used for each site (needed to
         // collect omegapathsuffstatarray)
-        sitecodonsubmatrixarray = new DoubleMixtureSelector<AACodonMutSelOmegaCodonSubMatrix>(
+        sitecodonsubmatrixarray = new DoubleMixtureSelector<AASENCAMutSelOmegaCodonSubMatrix>(
             componentcodonmatrixbidimarray, profile_alloc, omega_alloc);
 
         phyloprocess =
@@ -1037,17 +1037,17 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
     }
 
     void MoveNucRR() {
-        Move::Profile(nucrelrate, 0.1, 1, 3, &AACodonMutSelMultipleOmega::NucRatesLogProb,
-            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.01, 3, 3, &AACodonMutSelMultipleOmega::NucRatesLogProb,
-            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.1, 1, 3, &AASENCAMutSelMultipleOmega::NucRatesLogProb,
+            &AASENCAMutSelMultipleOmega::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.01, 3, 3, &AASENCAMutSelMultipleOmega::NucRatesLogProb,
+            &AASENCAMutSelMultipleOmega::UpdateMatrices, this);
     }
 
     void MoveNucStat() {
-        Move::Profile(nucstat, 0.1, 1, 2, &AACodonMutSelMultipleOmega::NucRatesLogProb,
-            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.01, 3, 2, &AACodonMutSelMultipleOmega::NucRatesLogProb,
-            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
+        Move::Profile(nucstat, 0.1, 1, 2, &AASENCAMutSelMultipleOmega::NucRatesLogProb,
+            &AASENCAMutSelMultipleOmega::UpdateMatrices, this);
+        Move::Profile(nucstat, 0.01, 3, 2, &AASENCAMutSelMultipleOmega::NucRatesLogProb,
+            &AASENCAMutSelMultipleOmega::UpdateMatrices, this);
     }
 
     //! MH move on codonfitnesses and nucstat parameters
@@ -1088,14 +1088,14 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
     }
     //! MH move on codonfitnesses parameters
     void MoveCodonFitness() {
-        Move::Profile(codonfitness, 1.0, 1, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
-            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.1, 1, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
-            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.01, 3, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
-            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.001, 3, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
-            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
+        Move::Profile(codonfitness, 1.0, 1, 3, &AASENCAMutSelMultipleOmega::CodonFitnessLogProb,
+            &AASENCAMutSelMultipleOmega::UpdateMatrices, this);
+        Move::Profile(codonfitness, 0.1, 1, 3, &AASENCAMutSelMultipleOmega::CodonFitnessLogProb,
+            &AASENCAMutSelMultipleOmega::UpdateMatrices, this);
+        Move::Profile(codonfitness, 0.01, 3, 3, &AASENCAMutSelMultipleOmega::CodonFitnessLogProb,
+            &AASENCAMutSelMultipleOmega::UpdateMatrices, this);
+        Move::Profile(codonfitness, 0.001, 3, 3, &AASENCAMutSelMultipleOmega::CodonFitnessLogProb,
+            &AASENCAMutSelMultipleOmega::UpdateMatrices, this);
     }
 
     //! MCMC module for the mixture amino-acid fitness profiles
@@ -1296,10 +1296,10 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
 
     //! MH move on kappa, concentration parameter of the mixture
     void MoveKappa() {
-        Move::Scaling(kappa, 1.0, 10, &AACodonMutSelMultipleOmega::StickBreakingHyperLogProb,
-            &AACodonMutSelMultipleOmega::NoUpdate, this);
-        Move::Scaling(kappa, 0.3, 10, &AACodonMutSelMultipleOmega::StickBreakingHyperLogProb,
-            &AACodonMutSelMultipleOmega::NoUpdate, this);
+        Move::Scaling(kappa, 1.0, 10, &AASENCAMutSelMultipleOmega::StickBreakingHyperLogProb,
+            &AASENCAMutSelMultipleOmega::NoUpdate, this);
+        Move::Scaling(kappa, 0.3, 10, &AASENCAMutSelMultipleOmega::StickBreakingHyperLogProb,
+            &AASENCAMutSelMultipleOmega::NoUpdate, this);
     }
 
     //! MCMC module for the base mixture
@@ -1452,11 +1452,11 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
     //! MH move on basekappa, concentration parameter of the base mixture
     void MoveBaseKappa() {
         Move::Scaling(basekappa, 1.0, 10,
-            &AACodonMutSelMultipleOmega::BaseStickBreakingHyperLogProb,
-            &AACodonMutSelMultipleOmega::NoUpdate, this);
+            &AASENCAMutSelMultipleOmega::BaseStickBreakingHyperLogProb,
+            &AASENCAMutSelMultipleOmega::NoUpdate, this);
         Move::Scaling(basekappa, 0.3, 10,
-            &AACodonMutSelMultipleOmega::BaseStickBreakingHyperLogProb,
-            &AACodonMutSelMultipleOmega::NoUpdate, this);
+            &AASENCAMutSelMultipleOmega::BaseStickBreakingHyperLogProb,
+            &AASENCAMutSelMultipleOmega::NoUpdate, this);
     }
 
     //! MCMC module for the mixture of omega
@@ -1555,17 +1555,17 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
     void MoveOmegaHyper() {
         if (omegaNcat > 1) {
             Move::Scaling(delta_omegahypermean, 1.0, 10,
-                &AACodonMutSelMultipleOmega::DeltaOmegaLogProb,
-                &AACodonMutSelMultipleOmega::NoUpdate, this);
+                &AASENCAMutSelMultipleOmega::DeltaOmegaLogProb,
+                &AASENCAMutSelMultipleOmega::NoUpdate, this);
             Move::Scaling(delta_omegahypermean, 0.3, 10,
-                &AACodonMutSelMultipleOmega::DeltaOmegaLogProb,
-                &AACodonMutSelMultipleOmega::NoUpdate, this);
+                &AASENCAMutSelMultipleOmega::DeltaOmegaLogProb,
+                &AASENCAMutSelMultipleOmega::NoUpdate, this);
             Move::Scaling(delta_omegahyperinvshape, 1.0, 10,
-                &AACodonMutSelMultipleOmega::DeltaOmegaLogProb,
-                &AACodonMutSelMultipleOmega::NoUpdate, this);
+                &AASENCAMutSelMultipleOmega::DeltaOmegaLogProb,
+                &AASENCAMutSelMultipleOmega::NoUpdate, this);
             Move::Scaling(delta_omegahyperinvshape, 0.3, 10,
-                &AACodonMutSelMultipleOmega::DeltaOmegaLogProb,
-                &AACodonMutSelMultipleOmega::NoUpdate, this);
+                &AASENCAMutSelMultipleOmega::DeltaOmegaLogProb,
+                &AASENCAMutSelMultipleOmega::NoUpdate, this);
         }
     }
 
@@ -1714,7 +1714,7 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
 
     const std::vector<double> &GetProfile(int i) const { return siteaafitnessarray->GetVal(i); }
 
-    static std::string GetModelName() { return CLASS_NAME(AACodonMutSelMultipleOmega); }
+    static std::string GetModelName() { return CLASS_NAME(AASENCAMutSelMultipleOmega); }
 
     void GetModelStamp(std::ostream &os) const {
         os << GetModelName() << '\t';
@@ -1737,7 +1737,7 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         tracer->write_line(os);
     }
 
-    AACodonMutSelMultipleOmega(std::istream &is) {
+    AASENCAMutSelMultipleOmega(std::istream &is) {
         std::string model_name;
         is >> model_name;
         if (model_name != GetModelName()) {

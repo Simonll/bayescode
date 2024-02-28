@@ -41,6 +41,7 @@ include_directories("utils")
 add_library(tree_lib STATIC "src/tree/implem.cpp")
 
 set(BAYESCODE_LIB
+    src/lib/AASENCAMutSelOmegaCodonSubMatrix.cpp
     src/lib/AACodonMutSelOmegaCodonSubMatrix.cpp
     src/lib/AAMutSelOmegaCodonSubMatrix.cpp
     src/lib/AAMutSelNeCodonMatrixBidimArray.cpp
@@ -74,6 +75,14 @@ set(BASE_LIBS
     bayescode_lib
     tree_lib
 )
+
+# Mutation-Selection (mutselaasencaomega)
+add_executable(mutselaasencaomega "src/AASENCAMutSelMultipleOmega.cpp")
+target_link_libraries(mutselaasencaomega ${BASE_LIBS})
+
+# Read Mutation-Selection (readmutselaasencaomega)
+add_executable(readmutselaasencaomega "src/ReadAASENCAMutSelMultipleOmega.cpp")
+target_link_libraries(readmutselaasencaomega ${BASE_LIBS})
 
 # Mutation-Selection (mutselaacomega)
 add_executable(mutselaacomega "src/AACodonMutSelMultipleOmega.cpp")
