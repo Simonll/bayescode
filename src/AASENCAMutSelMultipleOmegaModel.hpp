@@ -466,16 +466,17 @@ class AASENCAMutSelMultipleOmega : public ChainComponent {
 
         // codonfitness
         codonfitness.assign(Nstate, 0);
+        for (int c = 0; c < Nstate; c++) { codonfitness[c] = 1 / GetCodonStateSpace()->GetNstate() * GetCodonStateSpace()->GetDegeneracy(c);}
+        // codonfitnesshypercenter.assign(Nstate, 1.0 / Nstate);
+        // codonfitnesshyperinvconc = 1.0 / Nstate;
 
-        codonfitnesshypercenter.assign(Nstate, 1.0 / Nstate);
-        codonfitnesshyperinvconc = 1.0 / Nstate;
 
-
-        if (flatcodonfitness) {
-            std::fill(codonfitness.begin(), codonfitness.end(), codonfitnesshyperinvconc);
-        } else {
-            Random::DirichletSample(codonfitness, codonfitnesshypercenter, ((double)Nstate));
-        }
+        // if (flatcodonfitness) {
+            
+            
+        // } else {
+        //     Random::DirichletSample(codonfitness, codonfitnesshypercenter, ((double)Nstate));
+        // }
 
         std::vector<double> codonprefs{};
         if (!codonfitnessfile.empty() and codonfitnessfile != "Null") {
@@ -492,7 +493,11 @@ class AASENCAMutSelMultipleOmega : public ChainComponent {
 
         if (clamp_codonfitness) {
             for (int c = 0; c < Nstate; c++) { codonfitness[c] = codonprefs[c]; }
+            NormalizeCodonFitness();
+            
         }
+
+
 
         // base distribution (can be skipped)
         basekappa = 1.0;
@@ -817,8 +822,8 @@ class AASENCAMutSelMultipleOmega : public ChainComponent {
     //! log prior over codonfitness (uniform)
     double CodonFitnessLogPrior() const {
         double total = 0;
-        total += Random::logDirichletDensity(
-            codonfitness, codonfitnesshypercenter, 1.0 / codonfitnesshyperinvconc);
+        // total += Random::logDirichletDensity(
+        //     codonfitness, codonfitnesshypercenter, 1.0 / codonfitnesshyperinvconc);
 
         return total;
     }
@@ -988,8 +993,6 @@ class AASENCAMutSelMultipleOmega : public ChainComponent {
 
             CollectSitePathSuffStat();
 
-            if (!flatcodonfitness) { MoveCodonFitness(); }
-
             if (nucmode < 2) {
                 if (!flatnucstat) {
                     MoveNucStat();
@@ -1062,6 +1065,7 @@ class AASENCAMutSelMultipleOmega : public ChainComponent {
 
             double deltalogprob = -CodonFitnessLogProb() - NucRatesLogProb();
             Random::ProfileProposeMove(codonfitness, codonfitness.size(), tuning, n);
+            NormalizeCodonFitness();
             Random::ProfileProposeMove(nucstat, nucstat.size(), tuning, n);
             UpdateMatrices();
             deltalogprob += CodonFitnessLogProb() + NucRatesLogProb();
@@ -1086,18 +1090,7 @@ class AASENCAMutSelMultipleOmega : public ChainComponent {
         MoveNucStatCodonFitness(1 * 0.01, 30, 10);
         MoveNucStatCodonFitness(1 * 0.001, 30, 10);
     }
-    //! MH move on codonfitnesses parameters
-    void MoveCodonFitness() {
-        Move::Profile(codonfitness, 1.0, 1, 3, &AASENCAMutSelMultipleOmega::CodonFitnessLogProb,
-            &AASENCAMutSelMultipleOmega::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.1, 1, 3, &AASENCAMutSelMultipleOmega::CodonFitnessLogProb,
-            &AASENCAMutSelMultipleOmega::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.01, 3, 3, &AASENCAMutSelMultipleOmega::CodonFitnessLogProb,
-            &AASENCAMutSelMultipleOmega::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.001, 3, 3, &AASENCAMutSelMultipleOmega::CodonFitnessLogProb,
-            &AASENCAMutSelMultipleOmega::UpdateMatrices, this);
-    }
-
+  
     //! MCMC module for the mixture amino-acid fitness profiles
     void MoveAAMixture(int nrep) {
         for (int rep = 0; rep < nrep; rep++) {
@@ -1569,6 +1562,23 @@ class AASENCAMutSelMultipleOmega : public ChainComponent {
         }
     }
 
+
+    void NormalizeCodonFitness() {
+        for (int aa = 0; aa < Naa; aa++) {
+                double sum = 0;
+                for (int c = 0; c < Nstate; c++) {
+                    if (GetCodonStateSpace()->Translation(c) == aa) {
+                        sum += codonfitness[c];
+                    }
+                }
+                for (int c = 0; c < Nstate; c++) {
+                    if (GetCodonStateSpace()->Translation(c) == aa) {
+                        codonfitness[c] /= sum;
+                    }
+                }
+
+            }
+    }
 
     //-------------------
     // Traces and Monitors

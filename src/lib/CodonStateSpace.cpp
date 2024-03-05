@@ -258,5 +258,5 @@ void CodonStateSpace::MakeDegeneracyMap() const {
         }
         degeneracy[c_i] = d;
     }
-    for (int c_i = 0; c_i < GetNstate(); c_i++) { degeneracy[c_i] /= Naa; }
+    for (int c_i = 0; c_i < GetNstate(); c_i++) { degeneracy[c_i] /= GetNstate(); }
 }
