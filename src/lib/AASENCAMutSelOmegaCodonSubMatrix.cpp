@@ -8,8 +8,8 @@ void AASENCAMutSelOmegaCodonSubMatrix::ComputeStationary() const {
         mStationary[i] = NucMatrix->Stationary(GetCodonPosition(0, i)) *
                          NucMatrix->Stationary(GetCodonPosition(1, i)) *
                          NucMatrix->Stationary(GetCodonPosition(2, i)) *
-                         GetFitness(GetCodonStateSpace()->Translation(i)) * GetCodonFitness(i);
-        ;
+                         GetFitness(GetCodonStateSpace()->Translation(i)) * GetRNSCodonFitness(i);
+
         total += mStationary[i];
     }
 
@@ -30,7 +30,7 @@ void AASENCAMutSelOmegaCodonSubMatrix::ComputeArray(int i) const {
         if (!Synonymous(i, j)) {
             double deltaS = GetLogFitness(GetCodonStateSpace()->Translation(j)) -
                             GetLogFitness(GetCodonStateSpace()->Translation(i)) +
-                            GetLogCodonFitness(j) - GetLogCodonFitness(i);
+                            GetLogRNSCodonFitness(j) - GetLogRNSCodonFitness(i);
             if ((fabs(deltaS)) < 1e-30) {
                 Q(i, j) *= 1 + deltaS / 2;
             } else if (deltaS > 50) {
@@ -84,7 +84,7 @@ std::tuple<double, double> AASENCAMutSelOmegaCodonSubMatrix::GetFlowDNDS() const
             if (!Synonymous(i, j)) {
                 double deltaS = GetLogFitness(GetCodonStateSpace()->Translation(j)) -
                                 GetLogFitness(GetCodonStateSpace()->Translation(i)) +
-                                GetLogCodonFitness(j) - GetLogCodonFitness(i);
+                                GetLogRNSCodonFitness(j) - GetLogRNSCodonFitness(i);
                 double pfix;
                 if ((fabs(deltaS)) < 1e-30) {
                     pfix = 1 + deltaS / 2;
@@ -146,7 +146,7 @@ std::tuple<double, double> AASENCAMutSelOmegaCodonSubMatrix::GetRelativeFlowDNDS
             if (!Synonymous(i, j)) {
                 double deltaS = GetLogFitness(GetCodonStateSpace()->Translation(j)) -
                                 GetLogFitness(GetCodonStateSpace()->Translation(i)) +
-                                GetLogCodonFitness(j) - GetLogCodonFitness(i);
+                                GetLogRNSCodonFitness(j) - GetLogRNSCodonFitness(i);
                 double pfix;
                 if ((fabs(deltaS)) < 1e-30) {
                     pfix = 1 + deltaS / 2;

@@ -50,6 +50,18 @@ class AASENCAMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
         return logfitnesses[a];
     }
 
+
+    double GetRNSCodonFitness(int a) const {
+        assert(std::abs((exp(log(GetCodonStateSpace()->GetDegeneracy(a) * codon[a])) + 1e-8) -
+                        rnscodonfitnesses[a]) < 1e-6);
+        return rnscodonfitnesses[a];
+    }
+
+    double GetLogRNSCodonFitness(int a) const {
+        assert(std::abs(log(GetRNSCodonFitness(a)) - lognrscodonfitnesses[a]) < 1e-6);
+        return lognrscodonfitnesses[a];
+    }
+
     double GetCodonFitness(int a) const {
         assert(std::abs((exp(log(codon[a])) + 1e-8) - codonfitnesses[a]) < 1e-6);
         return codonfitnesses[a];
@@ -83,6 +95,9 @@ class AASENCAMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
         for (size_t c{0}; c < codon.size(); c++) {
             codonfitnesses[c] = exp(log(codon[c])) + 1e-8;
             logcodonfitnesses[c] = log(codonfitnesses[c]);
+            rnscodonfitnesses[c] =
+                exp(log(GetCodonStateSpace()->GetDegeneracy(c) * codon[c])) + 1e-8;
+            lognrscodonfitnesses[c] = log(rnscodonfitnesses[c]);
         }
         SubMatrix::CorruptMatrix();
     }
@@ -96,6 +111,8 @@ class AASENCAMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
     std::vector<double> logfitnesses;
     std::vector<double> codonfitnesses;
     std::vector<double> logcodonfitnesses;
+    std::vector<double> rnscodonfitnesses;
+    std::vector<double> lognrscodonfitnesses;
 
     // data members
     const std::vector<double> &aa;

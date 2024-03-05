@@ -237,33 +237,26 @@ vector<int> CodonStateSpace::GetNeighbors(int i) const { return neighbors_vector
  * Returns the degeneracy of the given codon.
  * @return The degeneracy of the codon. Returns -1 for stop codons.
  */
-int CodonStateSpace::GetDegeneracy(int codon)	{
-
-	if (!degeneracy.size())	{
-		MakeDegeneracyMap();
-	}
-	if (codon == -1)	{
-		return -1;
-	}
-	return degeneracy[codon];
+int CodonStateSpace::GetDegeneracy(int codon) const {
+    if (!degeneracy.size()) { MakeDegeneracyMap(); }
+    if (codon == -1) { return -1; }
+    return degeneracy[codon];
 }
 
 /**
  * Calculates the degeneracy of each codon in the codon state space.
- * The degeneracy of a codon is defined as the number of synonymous codons that encode the same amino acid.
- * This function iterates over all codons and counts the number of codons that translate to the same amino acid.
- * The degeneracy values are stored in the degeneracy map.
+ * The degeneracy of a codon is defined as the number of synonymous codons that encode the same
+ * amino acid. This function iterates over all codons and counts the number of codons that translate
+ * to the same amino acid. The degeneracy values are stored in the degeneracy map.
  */
-void CodonStateSpace::MakeDegeneracyMap()	{
-
-	for (int c_i =0; c_i < GetNstate(); c_i++)	{
-		int aa_i =  Translation(c_i);
+void CodonStateSpace::MakeDegeneracyMap() const {
+    for (int c_i = 0; c_i < GetNstate(); c_i++) {
+        int aa_i = Translation(c_i);
         int d = 0;
-        for (int c_j =0; c_j < GetNstate(); c_j++)	{
-            if (Translation(c_j) == aa_i)	{
-                d++;
-            }
+        for (int c_j = 0; c_j < GetNstate(); c_j++) {
+            if (Translation(c_j) == aa_i) { d++; }
         }
         degeneracy[c_i] = d;
-	}
+    }
+    for (int c_i = 0; c_i < GetNstate(); c_i++) { degeneracy[c_i] /= Naa; }
 }

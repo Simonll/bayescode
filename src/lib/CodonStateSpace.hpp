@@ -79,9 +79,9 @@ class CodonStateSpace : public StateSpace {
     //! translation: amino-acid encoded by given codon (stops excluded)
     int Translation(int codon) const { return CodonCode[codon]; }
 
-    int GetDegeneracy(int codon);
+    int GetDegeneracy(int codon) const;
 
-   
+
     //! whether the two codons are synonymous or not
     bool Synonymous(int codon1, int codon2) const {
         return (CodonCode[codon1] == CodonCode[codon2]);
@@ -120,7 +120,7 @@ class CodonStateSpace : public StateSpace {
     const int *GetStopPos2() const { return StopPos2; }
 
     const int *GetStopPos3() const { return StopPos3; }
-    void MakeDegeneracyMap();
+    void MakeDegeneracyMap() const;
     GeneticCodeType code;
     const DNAStateSpace *nucstatespace;
     const ProteinStateSpace *protstatespace;
