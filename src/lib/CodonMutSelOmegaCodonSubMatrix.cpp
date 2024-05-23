@@ -189,3 +189,9 @@ double CodonMutSelOmegaCodonSubMatrix::GetPredictedRelativeDS() const {
     std::tie(dn, ds) = GetRelativeFlowDNDS();
     return ds;
 }
+
+double CodonMutSelOmegaCodonSubMatrix::GetPredictedRelativeDN() const {
+    double dn = 0, ds = 0;
+    std::tie(dn, ds) = GetRelativeFlowDNDS();
+    return dn;
+}

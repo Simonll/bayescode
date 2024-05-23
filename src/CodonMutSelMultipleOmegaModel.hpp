@@ -16,6 +16,8 @@
 #include "components/model_decl_utils.hpp"
 #include "lib/Dirichlet.hpp"
 
+#define CLASS_NAME(class_name) #class_name
+
 /**
  * \brief The mutation-selection model with constant fitness landscape over the
  * tree -- double Dirichlet process version.
@@ -567,6 +569,14 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     }
 
     bool FlatFitness() const { return flatfitness; }
+    bool FlatNucStat() const { return flatnucstat; }
+    bool FlatNucRelRate() const { return flatnucrelrate; }
+
+    //! return branch length
+    double GetBranchLength(Tree::NodeIndex node) const {
+        assert(!tree->is_root(node));
+        return branchlength->GetVal(tree->branch_index(node));
+    }
 
     //! return number of aligned sites
     int GetNsite() const { return Nsite; }
@@ -1534,6 +1544,15 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return mean;
     }
 
+        double GetPredictedRelativedN() const {
+        double mean = 0;
+        for (int i = 0; i < GetNsite(); i++) {
+            mean += GetSiteOmega(i) * sitecodonsubmatrixarray->GetVal(i).GetPredictedRelativeDN();
+        }
+        mean /= GetNsite();
+        return mean;
+    }
+
     double GetPredictedRelativedS() const {
         double mean = 0;
         for (int i = 0; i < GetNsite(); i++) {
@@ -1542,11 +1561,18 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         mean /= GetNsite();
         return mean;
     }
-
+    const Tree &GetTree() const { return *tree; }
+    const int GetNcat() const { return Ncat; }
+    const int GetOmegaNcat() const { return omegaNcat; }
     const std::vector<double> &GetProfile(int i) const { return sitecodonfitnessarray->GetVal(i); }
+    const double GetProfileCodon(int i, int c) const { return componentcodonfitnessarray->GetVal(i)[c]; }
+    const int GetProfileAlloc(int i) const { return profile_alloc->GetVal(i); }
+    const double GetOmega(int i) const { return delta_omega_array->GetVal(i); }
+    const int GetOmegaAlloc(int i) const { return omega_alloc->GetVal(i); }
+    static std::string GetModelName() { return CLASS_NAME(CodonMutSelMultipleOmega); }
 
-    void ToStream(std::ostream &os) const {
-        os << "CodonMutSelMultipleOmega" << '\t';
+    void GetModelStamp(std::ostream &os) const {
+        os << GetModelName() << '\t';
         os << datafile << '\t' << treefile << '\t' << profilesfile << '\t';
         os << delta_omega_array_file << '\t';
         os << omegaNcat << '\t';
@@ -1555,14 +1581,20 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         os << Ncat << '\t';
         os << omegamode << '\t';
         os << flatfitness << '\t';
+        os << flatnucstat << '\t';
+        os << flatnucrelrate << '\t';
+    }
+
+    void ToStream(std::ostream &os) const {
+        GetModelStamp(os);
         tracer->write_line(os);
     }
 
     CodonMutSelMultipleOmegaModel(std::istream &is) {
         std::string model_name;
         is >> model_name;
-        if (model_name != "CodonMutSelMultipleOmega") {
-            std::cerr << "Expected CodonMutSelMultipleOmega for model name, got " << model_name
+        if (model_name != GetModelName()) {
+            std::cerr << "Expected " << GetModelName() << " for model name, got " << model_name
                       << "\n";
             exit(1);
         }
@@ -1574,6 +1606,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         is >> Ncat;
         is >> omegamode;
         is >> flatfitness;
+        is >> flatnucstat;
+        is >> flatnucrelrate;
         init();
         tracer->read_line(is);
         Update();

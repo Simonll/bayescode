@@ -48,13 +48,14 @@ class CodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
 
     std::tuple<double, double> GetFlowDNDS() const;
     double GetPredictedDNDS() const;
-
     double GetPredictedDS() const;
+    double GetPredictedDN() const;
 
     std::tuple<double, double> GetRelativeFlowDNDS() const;
-    double GetPredictedRelativeDNDS() const;
 
+    double GetPredictedRelativeDNDS() const;
     double GetPredictedRelativeDS() const;
+    double GetPredictedRelativeDN() const;
 
     void CorruptMatrixNoFitnessRecomput() { SubMatrix::CorruptMatrix(); }
 

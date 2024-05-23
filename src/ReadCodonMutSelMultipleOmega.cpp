@@ -6,6 +6,7 @@
 #include "components/ReadArgParse.hpp"
 #include "components/stats_posterior.hpp"
 #include "tclap/CmdLine.h"
+#include "tree/export.hpp"
 
 using namespace std;
 using namespace TCLAP;
@@ -24,6 +25,7 @@ class ReadCodonMutSelMultipleOmegaArgParse : public ReadArgParse {
         "To use combined with the option `confidence_interval`.",
         cmd};
     SwitchArg sel{"d", "distribution", "Computes selection coefficients", cmd};
+    SwitchArg simu{"", "for_simulation", "Prepare files for jump chain simulations", cmd};
     SwitchArg ss{"s", "ss",
         "Computes the mean posterior site-specific amino-acid equilibrium frequencies"
         "(amino-acid fitness profiles).",
@@ -48,7 +50,7 @@ int main(int argc, char *argv[]) {
     ChainDriver::fake_read(is);  // We're not interested in the ChainDriver of the param file
     CodonMutSelMultipleOmegaModel model(is);
     ChainReader cr{model, chain_name + ".chain"};
-
+    int Nstate = model.GetCodonStateSpace()->GetNstate();
     cr.skip(burnin);
     cerr << size << " points to read\n";
 
@@ -162,6 +164,70 @@ int main(int argc, char *argv[]) {
             }
         }
         cerr << '\n';
+    } else if (read_args.simu.getValue()) {
+        string filename{chain_name + ".pvalues"};
+        std::ofstream os(filename.c_str());
+        model.GetModelStamp(os);
+        os << '\n';
+        for (int step = 0; step < size; step++) {
+            cerr << '.';
+            cr.skip(every);
+            os << model.GetPredictedRelativedS() << "\t" << model.GetPredictedRelativedN() << "\n";
+            ExportTree export_tree(model.GetTree());
+            for (Tree::NodeIndex node = 0; node < Tree::NodeIndex(model.GetTree().nb_nodes());
+                 node++) {
+                if (!model.GetTree().is_root(node)) {
+                    // 3x: per coding site (and not per nucleotide site)
+                    export_tree.set_tag(node, "length", to_string(3 * model.GetBranchLength(node)));
+                }
+            }
+            os << export_tree.as_string() << '\n';
+            for (int i = 0; i < Nnuc; i++) {
+                if (i != Nnuc - 1) {
+                    os << model.GetNucStat(i) << '\t';
+                } else {
+                    os << model.GetNucStat(i) << '\n';
+                }
+            }
+            for (int i = 0; i < Nrr; i++) {
+                if (i != Nrr - 1) {
+                    os << model.GetNucRR(i) << '\t';
+                } else {
+                    os << model.GetNucRR(i) << '\n';
+                }
+            }
+            for (int i = 0; i < model.GetNcat(); i++) {
+                for (int j = 0; j < Nstate; j++) {
+                    if (j != Nstate - 1) {
+                        os << model.GetProfileCodon(i, j) << '\t';
+                    } else {
+                        os << model.GetProfileCodon(i, j) << '\n';
+                    }
+                }
+            }
+            for (int i = 0; i < model.GetNsite(); i++) {
+                if (i != model.GetNsite() - 1) {
+                    os << model.GetProfileAlloc(i) << '\t';
+                } else {
+                    os << model.GetProfileAlloc(i) << '\n';
+                }
+            }
+            for (int i = 0; i < model.GetOmegaNcat(); i++) {
+                if (i != model.GetOmegaNcat() - 1) {
+                    os << model.GetOmega(i) << '\t';
+                } else {
+                    os << model.GetOmega(i) << '\n';
+                }
+            }
+            for (int i = 0; i < model.GetNsite(); i++) {
+                if (i != model.GetNsite() - 1) {
+                    os << model.GetOmegaAlloc(i) << '\t';
+                } else {
+                    os << model.GetOmegaAlloc(i) << '\n';
+                }
+            }
+        }
+        os.close();
     } else if (read_args.sel.getValue()) {
         int Nstate = model.GetCodonStateSpace()->GetNstate();
         int Ncat = 241;
