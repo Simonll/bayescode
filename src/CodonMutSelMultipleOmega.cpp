@@ -26,6 +26,7 @@ class CodonMutselArgParse : public BaseArgParse {
         "the number of profiles in the file.",
         false, "Null", "string", cmd};
     SwitchArg flatnucstat{"", "flatnucstat", "Nucleotide stationary are flattened. ", cmd, false};
+    SwitchArg flatnucrelrate{"", "flatnucrelrate", "Nucleotide relative rate are flattened. ", cmd, false};
     SwitchArg flatfitness{"", "flatfitness",
         "Fitness profiles are flattened (and `ncat` equals to 1). "
         "This option is not compatible with the option `profiles`.",
@@ -79,7 +80,8 @@ int main(int argc, char *argv[]) {
                 codonmutsel_args.profiles.getValue(), codonmutsel_args.omegamode(),
                 codonmutsel_args.ncat.getValue(), 1, codonmutsel_args.omegancat.getValue(),
                 codonmutsel_args.omegashift.getValue(), codonmutsel_args.flatfitness.getValue(),
-                codonmutsel_args.omegaarray.getValue(), codonmutsel_args.flatnucstat.getValue());
+                codonmutsel_args.omegaarray.getValue(), codonmutsel_args.flatnucstat.getValue(),
+                codonmutsel_args.flatnucrelrate.getValue());
     }
 
     ConsoleLogger console_logger;
