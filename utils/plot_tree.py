@@ -8,13 +8,10 @@ import matplotlib
 from matplotlib.collections import LineCollection
 from matplotlib.cm import ScalarMappable
 import matplotlib.colors as colors
+from matplotlib import colormaps
 
-matplotlib.rcParams["font.family"] = ["Latin Modern Sans"]
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import matplotlib.font_manager as font_manager
-
-mono_font = font_manager.FontProperties(family='Latin Modern Mono', style='normal')
 
 
 def format_float(x):
@@ -61,7 +58,7 @@ def plot_tree(path, feature, font_size=14, line_type="-", vt_line_width=0.5, hz_
     min_annot = min(get_annot(n, feature) for n in tree.iter_leaves() if feature in n.features)
     max_annot = max(get_annot(n, feature) for n in tree.iter_leaves() if feature in n.features)
 
-    cmap = plt.get_cmap("inferno")
+    cmap = colormaps["inferno"]
     norm = colors.LogNorm(vmin=min_annot, vmax=max_annot)
     color_map = ScalarMappable(norm=norm, cmap=cmap)
 
@@ -91,7 +88,7 @@ def plot_tree(path, feature, font_size=14, line_type="-", vt_line_width=0.5, hz_
             if min_node_annot and max_node_annot:
                 row[feature + "Lower"] = min_node_annot
                 row[feature + "Upper"] = max_node_annot
-            ax.text(x, y, node_name, va='center', size=font_size, name="Latin Modern Mono")
+            ax.text(x, y, node_name, va='center', size=font_size)
             rows.append(row)
         else:
             y = sum([node_pos[n2] for n2 in n.children]) / len(n.children)
@@ -144,7 +141,7 @@ def plot_tree(path, feature, font_size=14, line_type="-", vt_line_width=0.5, hz_
 
     ax.set_axis_off()
     # plt.tight_layout()
-    cbar = fig.colorbar(color_map, orientation='horizontal', pad=0, shrink=0.6)
+    cbar = fig.colorbar(color_map, orientation='horizontal', pad=0, shrink=0.6, ax=ax)
     cbar.ax.xaxis.set_tick_params('major', labelsize=font_size * 1.8)
     cbar.ax.xaxis.set_tick_params('minor', labelsize=font_size)
     cbar.ax.set_xlabel(label_transform(feature), labelpad=5, size=font_size * 1.8)
