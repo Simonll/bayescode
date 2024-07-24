@@ -16,6 +16,8 @@
 #include "components/model_decl_utils.hpp"
 #include "lib/Dirichlet.hpp"
 
+#define CLASS_NAME(class_name) #class_name
+
 /**
  * \brief The mutation-selection model with constant fitness landscape over the
  * tree -- double Dirichlet process version.
@@ -553,6 +555,22 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
     //! const access to codon state space
     CodonStateSpace *GetCodonStateSpace() const {
         return (CodonStateSpace *)codondata->GetStateSpace();
+    }
+
+    double GetNucRR(int i) {
+        assert(i < Nrr);
+        return nucrelrate[i];
+    }
+
+    double GetNucStat(int i) {
+        assert(i < Nnuc);
+        return nucstat[i];
+    }
+
+    double GetAASiteFitness(int site, int i) {
+        assert(i < Naa);
+        assert(site < Nsite);
+        return siteaafitnessarray->GetVal(profile_alloc->GetVal(site))[i];
     }
 
     bool FlatFitness() const { return flatfitness; }
@@ -1473,8 +1491,11 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
 
     const std::vector<double> &GetProfile(int i) const { return siteaafitnessarray->GetVal(i); }
 
-    void ToStream(std::ostream &os) const {
-        os << "AAMutSelMultipleOmega" << '\t';
+    static std::string GetModelName() { return CLASS_NAME(AAMutSelMultipleOmega); }
+
+
+    void GetModelStamp(std::ostream &os) const {
+        os << GetModelName() << '\t';
         os << datafile << '\t' << treefile << '\t' << profilesfile << '\t';
         os << delta_omega_array_file << '\t';
         os << omegaNcat << '\t';
@@ -1483,14 +1504,18 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
         os << Ncat << '\t';
         os << omegamode << '\t';
         os << flatfitness << '\t';
+    }
+
+    void ToStream(std::ostream &os) const {
+        GetModelStamp(os);
         tracer->write_line(os);
     }
 
     AAMutSelMultipleOmegaModel(std::istream &is) {
         std::string model_name;
         is >> model_name;
-        if (model_name != "AAMutSelMultipleOmega") {
-            std::cerr << "Expected AAMutSelMultipleOmega for model name, got " << model_name
+        if (model_name != GetModelName()) {
+            std::cerr << "Expected " << GetModelName() << " for model name, got " << model_name
                       << "\n";
             exit(1);
         }

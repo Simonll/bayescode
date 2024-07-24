@@ -16,7 +16,8 @@ class ReadAAMutSelDSBDPOmegaArgParse : public ReadArgParse {
 
     SwitchArg nuc{"n", "nuc",
         "Mean posterior 4x4 nucleotide matrix."
-        "Results are written in {chain_name}.nucmatrix.tsv by default (optionally use the --output argument "
+        "Results are written in {chain_name}.nucmatrix.tsv by default (optionally use the --output "
+        "argument "
         " to specify a different output path).",
         cmd};
     ValueArg<string> chain_omega{"", "chain_omega",
@@ -24,7 +25,8 @@ class ReadAAMutSelDSBDPOmegaArgParse : public ReadArgParse {
         "ω-based codon model (Muse & Gaut). "
         "These two chains allow to compute posterior of ω, ω₀, ωᴬ=ω-ω₀ and p(ωᴬ>0) for each site "
         "and at the gene level. "
-        "Results are written in {chain_name}.omegaA.tsv by default (optionally use the --output argument "
+        "Results are written in {chain_name}.omegaA.tsv by default (optionally use the --output "
+        "argument "
         " to specify a different output path).",
         false, "", "string", cmd};
     SwitchArg omega{"", "omega",
@@ -46,10 +48,12 @@ class ReadAAMutSelDSBDPOmegaArgParse : public ReadArgParse {
         "Boundary for posterior credible interval of ω and ω₀ (per site and at the gene level). "
         "Default value is 0.025 at each side, meaning computing the 1-2*0.025=95% CI.",
         false, "0.025", "string", cmd};
+    SwitchArg sel{"d", "distribution", "Computes scaled selection coefficients", cmd};
     SwitchArg ss{"s", "ss",
         "Computes the mean posterior site-specific amino-acid equilibrium frequencies"
         "(amino-acid fitness profiles). "
-        "Results are written in {chain_name}.siteprofiles by default (optionally use the --output argument "
+        "Results are written in {chain_name}.siteprofiles by default (optionally use the --output "
+        "argument "
         " to specify a different output path).",
         cmd};
     ValueArg<string> omega_pp{"", "omega_threshold",
@@ -75,7 +79,7 @@ int main(int argc, char *argv[]) {
     ChainDriver::fake_read(is);  // We're not interested in the ChainDriver of the param file
     AAMutSelMultipleOmegaModel model(is);
     ChainReader cr{model, chain_name + ".chain"};
-
+    int Nstate = model.GetCodonStateSpace()->GetNstate();
     cr.skip(burnin);
     cerr << size << " points to read\n";
 
@@ -294,6 +298,151 @@ int main(int argc, char *argv[]) {
         cerr << "Posterior prob of omega greater than " << read_args.omega_pp.getValue() << " in "
              << filename << "\n";
         cerr << '\n';
+    } else if (read_args.sel.getValue()) {
+        int Ncat = 241;
+        double min = -30;
+        double max = 30;
+        double bin = 0.25;
+
+        vector<double> ghistoMut(Ncat, {0});
+        vector<double> ghistoSub(Ncat, {0});
+        vector<double> ghistoNonsynMut(Ncat, {0});
+        vector<double> ghistoNonsynSub(Ncat, {0});
+        vector<double> ghistoSynMut(Ncat, {0});
+        vector<double> ghistoSynSub(Ncat, {0});
+
+
+        for (int step = 0; step < size; step++) {
+            cerr << '.';
+            cr.skip(every);
+            int c = 0;
+            double statMutRate, deltaS, statSubRate;
+            double totalMut = 0;
+            double totalSub = 0;
+            double totalNonsynMut = 0;
+            double totalNonsynSub = 0;
+            double totalSynMut = 0;
+            double totalSynSub = 0;
+            vector<double> stat(Nstate, {0});
+            vector<double> shistoMut(Ncat, {0});
+            vector<double> shistoSub(Ncat, {0});
+            vector<double> shistoNonsynMut(Ncat, {0});
+            vector<double> shistoNonsynSub(Ncat, {0});
+            vector<double> shistoSynMut(Ncat, {0});
+            vector<double> shistoSynSub(Ncat, {0});
+
+            for (int site = 0; site < model.GetNsite(); site++) {
+                double Z = 0;
+                for (int s = 0; s < Nstate; s++) {
+                    stat[s] =
+                        model.GetNucStat(model.GetCodonStateSpace()->GetCodonPosition(0, s)) *
+                        model.GetNucStat(model.GetCodonStateSpace()->GetCodonPosition(1, s)) *
+                        model.GetNucStat(model.GetCodonStateSpace()->GetCodonPosition(2, s)) *
+                        model.GetAASiteFitness(site, model.GetCodonStateSpace()->Translation(s));
+                    Z += stat[s];
+                }
+                for (int s = 0; s < Nstate; s++) { stat[s] /= Z; }
+                int nonsyncount = 0;
+                int syncount = 0;
+                for (int codonFrom = 0; codonFrom < Nstate; codonFrom++) {
+                    for (auto codonTo : model.GetCodonStateSpace()->GetNeighbors(codonFrom)) {
+                        double pos =
+                            model.GetCodonStateSpace()->GetDifferingPosition(codonFrom, codonTo);
+                        double nucFrom =
+                            model.GetCodonStateSpace()->GetCodonPosition(pos, codonFrom);
+                        double nucTo = model.GetCodonStateSpace()->GetCodonPosition(pos, codonTo);
+                        double nucRRIndex;
+                        if (nucFrom < nucTo) {
+                            nucRRIndex =
+                                (2 * Nnuc - nucFrom - 1) * nucFrom / 2 + nucTo - nucFrom - 1;
+                        } else {
+                            nucRRIndex = (2 * Nnuc - nucTo - 1) * nucTo / 2 + nucFrom - nucTo - 1;
+                        }
+                        statMutRate =
+                            model.GetNucRR(nucRRIndex) * model.GetNucStat(nucTo) * stat[codonFrom];
+
+                        if (!model.GetCodonStateSpace()->Synonymous(codonFrom, codonTo)) {
+                            int aaFrom = model.GetCodonStateSpace()->Translation(codonFrom);
+                            int aaTo = model.GetCodonStateSpace()->Translation(codonTo);
+                            deltaS = log(model.GetAASiteFitness(site, aaTo)) -
+                                     log(model.GetAASiteFitness(site, aaFrom));
+                        } else {
+                            deltaS = 0;
+                        }
+
+                        if ((fabs(deltaS)) < 1e-30) {
+                            statSubRate = statMutRate * 1.0 / (1.0 - (deltaS / 2));
+                        } else {
+                            statSubRate = statMutRate * (deltaS / (1.0 - exp(-deltaS)));
+                        }
+
+                        if (!model.GetCodonStateSpace()->Synonymous(codonFrom, codonTo)) {
+                            statSubRate *= model.GetSiteOmega(site);
+                            nonsyncount++;
+                        } else {
+                            syncount++;
+                        }
+
+                        if (deltaS < min) {
+                            c = 0;
+                        } else if (deltaS > max) {
+                            c = Ncat - 1;
+                        } else {
+                            c = 0;
+                            double tmp = min + ((double)c * bin) - bin / 2 + bin;
+                            do {
+                                c++;
+                                tmp = min + ((double)c * bin) - bin / 2 + bin;
+                            } while (tmp < deltaS);
+                        }
+                        if (c == Ncat) {
+                            cout << "error, c==Ncat.\n";
+                            cout.flush();
+                        }
+
+                        if (!model.GetCodonStateSpace()->Synonymous(codonFrom, codonTo)) {
+                            shistoNonsynMut[c] += statMutRate;
+                            shistoNonsynSub[c] += statSubRate;
+                            totalNonsynMut += statMutRate;
+                            totalNonsynSub += statSubRate;
+                        } else {
+                            shistoSynMut[c] += statMutRate;
+                            shistoSynSub[c] += statSubRate;
+                            totalSynMut += statMutRate;
+                            totalSynSub += statSubRate;
+                        }
+                        shistoMut[c] += statMutRate;
+                        shistoSub[c] += statSubRate;
+                        totalMut += statMutRate;
+                        totalSub += statSubRate;
+                    }
+                }
+            }
+
+            for (c = 0; c < Ncat; c++) {
+                ghistoMut[c] += shistoMut[c] / totalMut;
+                ghistoSub[c] += shistoSub[c] / totalSub;
+                ghistoNonsynMut[c] += shistoNonsynMut[c] / totalNonsynMut;
+                ghistoNonsynSub[c] += shistoNonsynSub[c] / totalNonsynSub;
+                ghistoSynMut[c] += shistoSynMut[c] / totalSynMut;
+                ghistoSynSub[c] += shistoSynSub[c] / totalSynSub;
+            }
+        }
+        ofstream mutmutsel_os((chain_name + ".mutsel").c_str(), std::ios::out);
+        ofstream mutsubsel_os((chain_name + ".subsel").c_str(), std::ios::out);
+        ofstream nonsynmutmutsel_os((chain_name + ".nonsynmutsel").c_str(), std::ios::out);
+        ofstream nonsynmutsubsel_os((chain_name + ".nonsynsubsel").c_str(), std::ios::out);
+        ofstream synmutmutsel_os((chain_name + ".synmutsel").c_str(), std::ios::out);
+        ofstream synmutsubsel_os((chain_name + ".synsubsel").c_str(), std::ios::out);
+
+        for (int c = 0; c < Ncat; c++) {
+            mutmutsel_os << (min + (c * bin)) << "\t" << (ghistoMut[c] / size) << '\n';
+            mutsubsel_os << (min + (c * bin)) << "\t" << (ghistoSub[c] / size) << '\n';
+            nonsynmutmutsel_os << (min + (c * bin)) << "\t" << (ghistoNonsynMut[c] / size) << '\n';
+            nonsynmutsubsel_os << (min + (c * bin)) << "\t" << (ghistoNonsynSub[c] / size) << '\n';
+            synmutmutsel_os << (min + (c * bin)) << "\t" << (ghistoSynMut[c] / size) << '\n';
+            synmutsubsel_os << (min + (c * bin)) << "\t" << (ghistoSynSub[c] / size) << '\n';
+        }
     } else {
         stats_posterior<AAMutSelMultipleOmegaModel>(model, cr, every, size);
     }

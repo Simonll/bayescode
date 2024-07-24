@@ -16,6 +16,9 @@
 #include "components/ChainComponent.hpp"
 #include "components/Tracer.hpp"
 
+#define CLASS_NAME(class_name) #class_name
+
+
 /**
  * \brief The mutation-selection model with constant fitness landscape over the
  * tree -- double Dirichlet process version.
@@ -493,6 +496,18 @@ class AAMutSelDSBDPOmegaModel : public ChainComponent {
     // Accessors
     // ------------------
 
+    double GetNucStat(int i) {
+        assert(i < Nnuc);
+        return nucstat[i];
+    }
+
+     double GetAASiteFitness(int site, int i) {
+        assert(i < Naa);
+        assert(site < Nsite);
+        return siteaafitnessarray->GetVal(profile_alloc->GetVal(site))[i];
+    }
+
+
     //! const access to codon state space
     CodonStateSpace *GetCodonStateSpace() const {
         return (CodonStateSpace *)codondata->GetStateSpace();
@@ -581,6 +596,11 @@ class AAMutSelDSBDPOmegaModel : public ChainComponent {
     void GetNucRates(std::vector<double> &innucrelrate, std::vector<double> &innucstat) const {
         innucrelrate = nucrelrate;
         innucstat = nucstat;
+    }
+
+    double GetNucStat(int i) {
+        assert(i < Nnuc);
+        return nucstat[i];
     }
 
     //! set base mixture concentration and center parameters to new value
@@ -1492,6 +1512,12 @@ class AAMutSelDSBDPOmegaModel : public ChainComponent {
     //-------------------
     // Traces and Monitors
     // ------------------
+
+    //! return mutation rate between nucleotides from the mutation matrix
+    double GetNucRate(int i, int j) const {
+        nucmatrix->UpdateMatrix();
+        return nucmatrix->RelativeRate(i, j);
+    }
 
     //! return number of occupied components in first-level mixture (mixture of
     //! amino-acid fitness profiles)
