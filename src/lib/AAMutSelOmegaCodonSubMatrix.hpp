@@ -1,7 +1,7 @@
 #pragma once
 
-#include "CodonSubMatrix.hpp"
 #include <cassert>
+#include "CodonSubMatrix.hpp"
 
 /**
  * \brief A mutation-selection codon substitution process.
@@ -49,6 +49,11 @@ class AAMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
 
     std::tuple<double, double> GetFlowDNDS() const;
     double GetPredictedDNDS() const;
+
+    std::tuple<double, double> GetRelativeFlowDNDS() const;
+    double GetPredictedRelativeDNDS() const;
+    double GetPredictedRelativeDN() const;
+    double GetPredictedRelativeDS() const;
 
     void UpdateNe(double inNe) {
         Ne = inNe;

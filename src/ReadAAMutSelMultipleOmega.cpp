@@ -6,6 +6,8 @@
 #include "components/ReadArgParse.hpp"
 #include "components/stats_posterior.hpp"
 #include "tclap/CmdLine.h"
+#include "tree/export.hpp"
+
 
 using namespace std;
 using namespace TCLAP;
@@ -56,6 +58,7 @@ class ReadAAMutSelDSBDPOmegaArgParse : public ReadArgParse {
         "argument "
         " to specify a different output path).",
         cmd};
+    SwitchArg simu{"", "for_simulation", "Prepare files for jump chain simulations", cmd};
     ValueArg<string> omega_pp{"", "omega_threshold",
         "Threshold to compute the mean posterior probability that ω⁎ "
         "(or ω if option `flatfitness` is used in `mutselomega`) is greater than a given value "
@@ -268,6 +271,70 @@ int main(int argc, char *argv[]) {
             }
         }
         cerr << '\n';
+    } else if (read_args.simu.getValue()) {
+        string filename{chain_name + ".pvalues"};
+        std::ofstream os(filename.c_str());
+        model.GetModelStamp(os);
+        os << '\n';
+        for (int step = 0; step < size; step++) {
+            cerr << '.';
+            cr.skip(every);
+            os << model.GetPredictedRelativedS() << "\t" << model.GetPredictedRelativedN() << "\n";
+            ExportTree export_tree(model.GetTree());
+            for (Tree::NodeIndex node = 0; node < Tree::NodeIndex(model.GetTree().nb_nodes());
+                 node++) {
+                if (!model.GetTree().is_root(node)) {
+                    // 3x: per coding site (and not per nucleotide site)
+                    export_tree.set_tag(node, "length", to_string(3 * model.GetBranchLength(node)));
+                }
+            }
+            os << export_tree.as_string() << '\n';
+            for (int i = 0; i < Nnuc; i++) {
+                if (i != Nnuc - 1) {
+                    os << model.GetNucStat(i) << '\t';
+                } else {
+                    os << model.GetNucStat(i) << '\n';
+                }
+            }
+            for (int i = 0; i < Nrr; i++) {
+                if (i != Nrr - 1) {
+                    os << model.GetNucRR(i) << '\t';
+                } else {
+                    os << model.GetNucRR(i) << '\n';
+                }
+            }
+            for (int i = 0; i < model.GetNcat(); i++) {
+                for (int j = 0; j < Naa; j++) {
+                    if (j != Naa - 1) {
+                        os << model.GetProfileAA(i, j) << '\t';
+                    } else {
+                        os << model.GetProfileAA(i, j) << '\n';
+                    }
+                }
+            }
+            for (int i = 0; i < model.GetNsite(); i++) {
+                if (i != model.GetNsite() - 1) {
+                    os << model.GetProfileAlloc(i) << '\t';
+                } else {
+                    os << model.GetProfileAlloc(i) << '\n';
+                }
+            }
+            for (int i = 0; i < model.GetOmegaNcat(); i++) {
+                if (i != model.GetOmegaNcat() - 1) {
+                    os << model.GetOmega(i) << '\t';
+                } else {
+                    os << model.GetOmega(i) << '\n';
+                }
+            }
+            for (int i = 0; i < model.GetNsite(); i++) {
+                if (i != model.GetNsite() - 1) {
+                    os << model.GetOmegaAlloc(i) << '\t';
+                } else {
+                    os << model.GetOmegaAlloc(i) << '\n';
+                }
+            }
+        }
+        os.close();
     } else if (!read_args.omega_pp.getValue().empty()) {
         double omega_pp = stod(read_args.omega_pp.getValue());
         vector<double> omegappgto(model.GetNsite(), 0);

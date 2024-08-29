@@ -1489,6 +1489,45 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
         return mean;
     }
 
+    double GetPredictedRelativedNdS() const {
+        double mean = 0;
+        for (int i = 0; i < GetNsite(); i++) {
+            mean += GetSiteOmega(i) * sitecodonsubmatrixarray->GetVal(i).GetPredictedRelativeDNDS();
+        }
+        mean /= GetNsite();
+        return mean;
+    }
+
+    double GetPredictedRelativedN() const {
+        double mean = 0;
+        for (int i = 0; i < GetNsite(); i++) {
+            mean += GetSiteOmega(i) * sitecodonsubmatrixarray->GetVal(i).GetPredictedRelativeDN();
+        }
+        mean /= GetNsite();
+        return mean;
+    }
+
+    double GetPredictedRelativedS() const {
+        double mean = 0;
+        for (int i = 0; i < GetNsite(); i++) {
+            mean += sitecodonsubmatrixarray->GetVal(i).GetPredictedRelativeDS();
+        }
+        mean /= GetNsite();
+        return mean;
+    }
+
+    double GetBranchLength(Tree::NodeIndex node) const {
+        assert(!tree->is_root(node));
+        return branchlength->GetVal(tree->branch_index(node));
+    }
+    const int GetNcat() const { return Ncat; }
+    const int GetOmegaNcat() const { return omegaNcat; }
+
+    const Tree &GetTree() const { return *tree; }
+    const double GetProfileAA(int i, int a) const { return componentaafitnessarray->GetVal(i)[a]; }
+    const int GetProfileAlloc(int i) const { return profile_alloc->GetVal(i); }
+    const double GetOmega(int i) const { return delta_omega_array->GetVal(i); }
+    const int GetOmegaAlloc(int i) const { return omega_alloc->GetVal(i); }
     const std::vector<double> &GetProfile(int i) const { return siteaafitnessarray->GetVal(i); }
 
     static std::string GetModelName() { return CLASS_NAME(AAMutSelMultipleOmega); }

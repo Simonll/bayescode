@@ -98,3 +98,87 @@ double AAMutSelOmegaCodonSubMatrix::GetPredictedDNDS() const {
     std::tie(dn, dn0) = GetFlowDNDS();
     return dn / dn0;
 }
+
+double AAMutSelOmegaCodonSubMatrix::GetPredictedRelativeDNDS() const {
+    double dn = 0, ds = 0;
+    std::tie(dn, ds) = GetRelativeFlowDNDS();
+    return dn / ds;
+}
+
+double AAMutSelOmegaCodonSubMatrix::GetPredictedRelativeDN() const {
+    double dn = 0, ds = 0;
+    std::tie(dn, ds) = GetRelativeFlowDNDS();
+    return dn;
+}
+
+double AAMutSelOmegaCodonSubMatrix::GetPredictedRelativeDS() const {
+    double dn = 0, ds = 0;
+    std::tie(dn, ds) = GetRelativeFlowDNDS();
+    return ds;
+}
+
+std::tuple<double, double> AAMutSelOmegaCodonSubMatrix::GetRelativeFlowDNDS() const {
+    UpdateStationary();
+
+
+    double totmutdn = 0;
+    double totmutds = 0;
+
+    double totsubdn = 0;
+    double totsubds = 0;
+
+    for (int i = 0; i < Nstate; i++) {
+        double mutds = 0;
+        double mutdn = 0;
+        double subds = 0;
+        double subdn = 0;
+        for (auto j : statespace->GetNeighbors(i)) {
+            int pos = GetDifferingPosition(i, j);
+            int a = GetCodonPosition(pos, i);
+            int b = GetCodonPosition(pos, j);
+
+            double nucrate = (*NucMatrix)(a, b);
+
+            if (!Synonymous(i, j)) {
+                double deltaS = GetLogFitness(GetCodonStateSpace()->Translation(j)) -
+                                GetLogFitness(GetCodonStateSpace()->Translation(i));
+                double pfix;
+                if ((fabs(deltaS)) < 1e-30) {
+                    pfix = 1 + deltaS / 2;
+                } else if (deltaS > 50) {
+                    pfix = deltaS;
+                } else if (deltaS < -50) {
+                    pfix = 0;
+                } else {
+                    pfix = deltaS / (1.0 - exp(-deltaS));
+                }
+
+                mutdn += nucrate;
+                subdn += nucrate * pfix;
+
+            } else {
+                double deltaS = GetLogFitness(GetCodonStateSpace()->Translation(j)) -
+                                GetLogFitness(GetCodonStateSpace()->Translation(i));
+                double pfix;
+                if ((fabs(deltaS)) < 1e-30) {
+                    pfix = 1 + deltaS / 2;
+                } else if (deltaS > 50) {
+                    pfix = deltaS;
+                } else if (deltaS < -50) {
+                    pfix = 0;
+                } else {
+                    pfix = deltaS / (1.0 - exp(-deltaS));
+                }
+                mutds += nucrate;
+                subds += nucrate * pfix;
+            }
+        }
+
+        totmutdn += mStationary[i] * mutdn;
+        totmutds += mStationary[i] * mutds;
+        totsubdn += mStationary[i] * subdn;
+        totsubds += mStationary[i] * subds;
+    }
+
+    return std::make_tuple(totsubdn / totmutdn, totsubds / totmutds);
+}
