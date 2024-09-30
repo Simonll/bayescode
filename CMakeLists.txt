@@ -144,12 +144,12 @@ else()
     target_link_libraries(readcodonm2a ${BASE_LIBS})
 
     # Mutation-Selection (aamutsel)
-    add_executable(aamutsel "src/AAMutSelDSBDPOmega.cpp")
-    target_link_libraries(aamutsel ${BASE_LIBS})
+    # add_executable(aamutsel "src/AAMutSelDSBDPOmega.cpp")
+    # target_link_libraries(aamutsel ${BASE_LIBS})
 
     # Read Mutation-Selection (readaamutsel)
-    add_executable(readaamutsel "src/ReadAAMutSelDSBDPOmega.cpp")
-    target_link_libraries(readaamutsel ${BASE_LIBS})
+    # add_executable(readaamutsel "src/ReadAAMutSelDSBDPOmega.cpp")
+    # target_link_libraries(readaamutsel ${BASE_LIBS})
 
     # Mutation-Selection (mutseldm5)
     add_executable(mutseldm5 "src/AAMutSelDM5.cpp")

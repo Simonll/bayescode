@@ -194,8 +194,7 @@ int main(int argc, char* argv[]) {
             for (Tree::NodeIndex node = 0; node < Tree::NodeIndex(model.GetTree().nb_nodes());
                  node++) {
                 if (!model.GetTree().is_root(node)) {
-                    // 3x: per coding site (and not per nucleotide site)
-                    export_tree.set_tag(node, "length", to_string(3 * model.GetBranchLength(node)));
+                    export_tree.set_tag(node, "length", to_string(model.GetBranchLength(node)));
                 }
             }
             os << export_tree.as_string() << '\n';
