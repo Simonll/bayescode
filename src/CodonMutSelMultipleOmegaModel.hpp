@@ -511,7 +511,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     template <class Info>
     void declare_interface(Info info) {
-        // if (blmode < 2) { model_node(info, "branchlength", *branchlength); }
+        if (blmode < 2) { model_node(info, "branchlength", *branchlength); }
         if (nucmode < 2) {
             model_node(info, "nucrelrate", nucrelrate);
             model_node(info, "nucstat", nucstat);
@@ -538,8 +538,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "lnL", [this]() { return GetLogLikelihood(); });
         // 3x: per coding site (and not per nucleotide site)
         model_stat(info, "length", [this]() { return 3 * branchlength->GetTotalLength(); });
-        model_stat(info, "ds", [this]() { return GetPredictedRelativedS(); });
-        model_stat(info, "dnds", [this]() { return GetPredictedRelativedNdS(); });
+        model_stat(info, "ds", [this]() { return GetPredictedEffectivedS(); });
+        model_stat(info, "dnds", [this]() { return GetPredictedEffectivedNdS(); });
         model_stat(
             info, "omegaent", [this]() { return Random::GetEntropy(omega_weight->GetArray()); });
         model_stat(info, "ncluster", [this]() { return GetNcluster(); });
