@@ -989,8 +989,12 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     //! MH move on codon fitness profiles: additive compensated move on pairs
     //! of entries of the vector
     double CompMoveCodonProfiles(int nrep) {
-        MoveCodon(1.0, 1, nrep);
+        MoveCodon(1, 1, nrep);
         MoveCodon(0.1, 3, nrep);
+        MoveCodon(0.01, 12, nrep);
+        MoveNucStatCodon(0.1,12,0.01,1,nrep);
+        MoveNucStatCodon(0.01,12,0.01,1,nrep);
+        MoveNucStatCodon(0.01,12,0.01,1,nrep);
         return 1.0;
     }
 
@@ -1037,6 +1041,50 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return nacc / ntot;
     }
 
+    //! MH move on codonfitnesses and nucstat parameters
+    double MoveNucStatCodon(double tuning_codon, int n_codon,double tuning_stat, int n_stat, int nrep) {
+        double nacc = 0;
+        double ntot = 0;
+        double bkcodon[GetCodonStateSpace()->GetNstate()];
+        double bknucstat[GetCodonStateSpace()->GetNstate()];
+        for (int i = 0; i < Ncat; i++) {
+            if (profile_occupancy->GetVal(i)) {
+                std::vector<double> &codon_ = (*componentcodonfitnessarray)[i];
+                std::vector<double> &nucstat_ = nucstat;
+                for (int rep = 0; rep < nrep; rep++) {
+                    for (int l = 0; l < GetCodonStateSpace()->GetNstate(); l++) {
+                        bkcodon[l] = codon_[l];
+                    }
+                    for (int l = 0; l < Nnuc; l++) {
+                        bknucstat[l] = nucstat_[l];
+                    }
+                    double deltalogprob = -CodonLogPrior(i) - PathSuffStatLogProb(i) - NucRatesLogProb();
+                    double loghastings = Random::ProfileProposeMove(codon_, codon_.size(), tuning_codon, n_codon);
+                    loghastings += Random::ProfileProposeMove(nucstat_, nucstat_.size(), tuning_stat, n_stat);
+                    deltalogprob += loghastings;
+                    UpdateMatrices();
+                    CorruptProfileCodonMatrices(i);
+                    deltalogprob += CodonLogPrior(i) + PathSuffStatLogProb(i) + NucRatesLogProb();
+                    int accepted = (log(Random::Uniform()) < deltalogprob);
+                    if (accepted) {
+                        nacc++;
+                    } else {
+                        for (int l = 0; l < GetCodonStateSpace()->GetNstate(); l++) {
+                            codon_[l] = bkcodon[l];
+                        }
+                        for (int l = 0; l < Nnuc; l++) {
+                            nucstat_[l] = bknucstat[l];
+                        }
+                        UpdateMatrices();
+                        CorruptProfileCodonMatrices(i);
+
+                    }
+                    ntot++;
+                }
+            }  
+        }
+        return nacc / ntot;
+    }
     //! helper function: log density of Nstate gammas
     double GammaCodonLogPrior(
         const std::vector<double> &x, const std::vector<double> &codoncenter, double codonconc) {
