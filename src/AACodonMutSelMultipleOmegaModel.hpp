@@ -630,6 +630,8 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         model_stat(info, "length", [this]() { return 3 * branchlength->GetTotalLength(); });
         model_stat(info, "ds", [this]() { return GetPredictedRelativedS(); });
         model_stat(info, "dnds", [this]() { return GetPredictedRelativedNdS(); });
+        model_stat(info, "gc", [this]() { return GetGC(); });
+        model_stat(info, "tstv", [this]() { return GetTsTv(); });
         model_stat(
             info, "omegaent", [this]() { return Random::GetEntropy(omega_weight->GetArray()); });
         model_stat(info, "ncluster", [this]() { return GetNcluster(); });
@@ -693,6 +695,8 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         assert(site < Nsite);
         return siteaafitnessarray->GetVal(profile_alloc->GetVal(site))[i];
     }
+    double GetGC() { return nucstat[1]+nucstat[2]; }
+    double GetTsTv() { return (nucrelrate[1]+nucrelrate[4])/(nucrelrate[0]+nucrelrate[2]+nucrelrate[3]+nucrelrate[5]); }
 
     //! return number of aligned sites
     int GetNsite() const { return Nsite; }
@@ -988,14 +992,19 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
 
             CollectSitePathSuffStat();
 
-            if (!flatcodonfitness) { MoveCodonFitness(); }
-
             if (nucmode < 2) {
                 if (!flatnucstat) {
-                    MoveNucStat();
-                    if (!flatcodonfitness) { MoveNucStatCodonFitness(); }
+                    if (!flatcodonfitness) { 
+                        MoveCodonNucStat(); 
+                    } else {
+                        MoveNucStat();
+                    }
+                } else { 
+                    MoveCodon(); 
                 }
-                if (!flatnucrelrate) { MoveNucRR(); }
+                if (!flatnucrelrate) { 
+                    MoveNucRR(); 
+                }
             }
 
             if (omegamode < 2) { MoveOmegaMixture(3); }
@@ -1009,7 +1018,6 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
                 if (basemode < 2 and !clamp_profiles) { MoveBase(3); }
                 basechrono.Stop();
             }
-
             totchrono.Stop();
         }
     }
@@ -1051,7 +1059,7 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
     }
 
     //! MH move on codonfitnesses and nucstat parameters
-    double MoveNucStatCodonFitness(double tuning, int n, int nrep) {
+    double MoveCodonNucStat(double tuning_codon, int n_codon, double tuning_stat, int n_stat, int nrep) {
         double nacc = 0;
         double ntot = 0;
         std::vector<double> BKCodonFitness(codonfitness.size(), 0);
@@ -1061,8 +1069,8 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
             BKNucStat = nucstat;
 
             double deltalogprob = -CodonFitnessLogProb() - NucRatesLogProb();
-            Random::ProfileProposeMove(codonfitness, codonfitness.size(), tuning, n);
-            Random::ProfileProposeMove(nucstat, nucstat.size(), tuning, n);
+            Random::ProfileProposeMove(codonfitness, codonfitness.size(), tuning_codon, n_codon);
+            Random::ProfileProposeMove(nucstat, nucstat.size(), tuning_stat, n_stat);
             UpdateMatrices();
             deltalogprob += CodonFitnessLogProb() + NucRatesLogProb();
 
@@ -1079,18 +1087,18 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         return nacc / ntot;
     }
 
-
-    void MoveNucStatCodonFitness() {
-        MoveNucStatCodonFitness(1, 30, 10);
-        MoveNucStatCodonFitness(1 * 0.1, 30, 10);
-        MoveNucStatCodonFitness(1 * 0.01, 30, 10);
-        MoveNucStatCodonFitness(1 * 0.001, 30, 10);
+    void MoveCodonNucStat() {
+        int nrep{3};
+        MoveCodonNucStat(1,1,0.1,1,nrep);
+        MoveCodonNucStat(0.1,3,0.1,1,nrep);
+        MoveCodonNucStat(0.01,3,0.01,1,nrep);
+        MoveCodonNucStat(0.001,3,0.01,1,nrep);
     }
     //! MH move on codonfitnesses parameters
-    void MoveCodonFitness() {
+    void MoveCodon() {
         Move::Profile(codonfitness, 1.0, 1, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
             &AACodonMutSelMultipleOmega::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.1, 1, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
+        Move::Profile(codonfitness, 0.1, 3, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
             &AACodonMutSelMultipleOmega::UpdateMatrices, this);
         Move::Profile(codonfitness, 0.01, 3, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
             &AACodonMutSelMultipleOmega::UpdateMatrices, this);
