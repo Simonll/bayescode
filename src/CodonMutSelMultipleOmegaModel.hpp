@@ -540,6 +540,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "length", [this]() { return 3 * branchlength->GetTotalLength(); });
         model_stat(info, "ds", [this]() { return GetPredictedEffectivedS(); });
         model_stat(info, "dnds", [this]() { return GetPredictedEffectivedNdS(); });
+        model_stat(info, "gc", [this]() { return GetGC(); });
+        model_stat(info, "tstv", [this]() { return GetTsTv(); });
         model_stat(
             info, "omegaent", [this]() { return Random::GetEntropy(omega_weight->GetArray()); });
         model_stat(info, "ncluster", [this]() { return GetNcluster(); });
@@ -586,7 +588,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     double GetNucRR(int i) { return nucrelrate[i]; }
     double GetNucStat(int i) { return nucstat[i]; }
-
+    double GetGC() { return nucstat[1]+nucstat[2]; }
+    double GetTsTv() { return (nucrelrate[1]+nucrelrate[4])/(nucrelrate[0]+nucrelrate[2]+nucrelrate[3]+nucrelrate[5]); }
     double GetSiteCodonFitness(int site, int i) {
         return sitecodonfitnessarray->GetVal(profile_alloc->GetVal(site))[i];
     }
@@ -867,22 +870,27 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             CollectSitePathSuffStat();
 
             if (nucmode < 2) {
-                if (!flatnucrelrate) { 
-                    MoveNucRelRate(); 
-                }
                 if (!flatnucstat) {
                     MoveNucStat();
                 } 
+                if (!flatnucrelrate) { 
+                    MoveNucRelRate(); 
+                }
+                
             }
-
 
             if (omegamode < 2) { MoveOmegaMixture(3); }
 
             if (!flatfitness) {
-                chrono.Start();
-                MoveCodonMixture(3);
-                chrono.Stop();
-
+                if (!flatnucstat) {
+                    chrono.Start();
+                    MoveCodonNucStatMixture(3);
+                    chrono.Stop();
+                } else {
+                    chrono.Start();
+                    MoveCodonMixture(3);
+                    chrono.Stop();
+                }
                 basechrono.Start();
                 if (basemode < 2 and !clamp_profiles) { MoveBase(3); }
                 basechrono.Stop();
@@ -958,6 +966,22 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     }
 
     //! MCMC module for the mixture amino-acid fitness profiles
+    void MoveCodonNucStatMixture(int nrep) {
+        for (int rep = 0; rep < nrep; rep++) {
+            if (!clamp_profiles) {
+                MoveCodonNucStatProfiles();
+                ResampleEmptyProfileComponents();
+            }
+            if (!clamp_profiles_allocation) {
+                ResampleProfileAlloc();
+                ProfileLabelSwitchingMove();
+                ResampleProfileWeights();
+                MoveKappa();
+            }
+            if (!clamp_profiles_allocation or !clamp_profiles) { CorruptCodonMatrices(); }
+        }
+    }
+
     void MoveCodonMixture(int nrep) {
         for (int rep = 0; rep < nrep; rep++) {
             if (!clamp_profiles) {
@@ -986,15 +1010,25 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         MulMoveCodonProfiles(3);
     }
 
+    void MoveCodonNucStatProfiles() {
+        CompMoveCodonNucStatProfiles(3);
+        MulMoveCodonProfiles(3);
+    }
+
     //! MH move on codon fitness profiles: additive compensated move on pairs
     //! of entries of the vector
     double CompMoveCodonProfiles(int nrep) {
         MoveCodon(1, 1, nrep);
         MoveCodon(0.1, 3, nrep);
-        MoveCodon(0.01, 12, nrep);
-        MoveNucStatCodon(0.1,12,0.01,1,nrep);
-        MoveNucStatCodon(0.01,12,0.01,1,nrep);
-        MoveNucStatCodon(0.01,12,0.01,1,nrep);
+        MoveCodon(0.01, 3, nrep);
+        return 1.0;
+    }
+
+    double CompMoveCodonNucStatProfiles(int nrep) {
+        MoveCodonNucStat(1,1,0.1,1,nrep);
+        MoveCodonNucStat(0.1,3,0.1,1,nrep);
+        MoveCodonNucStat(0.01,3,0.1,1,nrep);
+        MoveCodonNucStat(0.001,3,0.01,1,nrep);
         return 1.0;
     }
 
@@ -1042,7 +1076,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     }
 
     //! MH move on codonfitnesses and nucstat parameters
-    double MoveNucStatCodon(double tuning_codon, int n_codon,double tuning_stat, int n_stat, int nrep) {
+    double MoveCodonNucStat(double tuning_codon, int n_codon,double tuning_stat, int n_stat, int nrep) {
         double nacc = 0;
         double ntot = 0;
         double bkcodon[GetCodonStateSpace()->GetNstate()];
