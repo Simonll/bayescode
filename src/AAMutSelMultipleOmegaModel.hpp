@@ -527,6 +527,8 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
         // 3x: per coding site (and not per nucleotide site)
         model_stat(info, "length", [this]() { return 3 * branchlength->GetTotalLength(); });
         model_stat(info, "dnds", [this]() { return GetPredictedEffectivedNdS(); });
+        model_stat(info, "gc", [this]() { return GetGC(); });
+        model_stat(info, "tstv", [this]() { return GetTsTv(); });
         model_stat(info, "omega0", [this]() { return GetPredictedOmegaKnot(); });
         model_stat(info, "omega", [this]() { return GetMeanOmega(); });
         model_stat(
@@ -1406,6 +1408,11 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
     double GetNucRate(int i, int j) const {
         nucmatrix->UpdateMatrix();
         return (*nucmatrix)(i, j);
+    }
+    double GetGC() { return nucstat[1] + nucstat[2]; }
+    double GetTsTv() {
+        return (nucrelrate[1] + nucrelrate[4]) /
+               (nucrelrate[0] + nucrelrate[2] + nucrelrate[3] + nucrelrate[5]);
     }
 
 
