@@ -1409,13 +1409,16 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
         nucmatrix->UpdateMatrix();
         return (*nucmatrix)(i, j);
     }
-    double GetGC() { return nucstat[1] + nucstat[2]; }
+    double GetGC() { return (nucstat[1] + nucstat[2]); }
     double GetTsTv() {
-        return (nucrelrate[1] + nucrelrate[4]) /
-               (nucrelrate[0] + nucrelrate[2] + nucrelrate[3] + nucrelrate[5]);
+        return (nucrelrate[GetNucRelRateIndex(0, 2)] + nucrelrate[GetNucRelRateIndex(1, 3)]) /
+               (nucrelrate[GetNucRelRateIndex(0, 1)] + nucrelrate[GetNucRelRateIndex(0, 3)] +
+                   nucrelrate[GetNucRelRateIndex(1, 3)] + nucrelrate[GetNucRelRateIndex(2, 3)]);
     }
-
-
+    int GetNucRelRateIndex(int i, int j) const {
+        return (i < j) ? (2 * Nnuc - i - 1) * i / 2 + j - i - 1
+                       : (2 * Nnuc - j - 1) * j / 2 + i - j - 1;
+    }
     //! return number of occupied components in first-level mixture (mixture of
     //! amino-acid fitness profiles)
     int GetNcluster() const {
