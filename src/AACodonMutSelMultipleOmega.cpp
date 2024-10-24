@@ -29,6 +29,11 @@ class MutselArgParse : public BaseArgParse {
         "File path the codonfitness profiles (tsv or csv), thus considered fixed. "
         "the number of profiles in the file.",
         false, "Null", "string", cmd};
+    ValueArg<std::string> nucstat{"", "nucstat",
+        "File path to nucleotide stationary, thus considered fixed.", false, "Null", "string", cmd};
+    ValueArg<std::string> nucrelrate{"", "nucrelrate",
+        "File path to nucleotide relative rate, thus considered fixed.", false, "Null", "string",
+        cmd};
     SwitchArg simu{"", "for_simulation", "Prepare files for jump chain simulations", cmd, false};
     SwitchArg flatfitness{"", "flatfitness",
         "Fitness profiles are flattened (and `ncat` equals to 1). "
@@ -88,6 +93,7 @@ int main(int argc, char *argv[]) {
             new ChainDriver(cmd.chain_name(), args.every.getValue(), args.until.getValue());
         model = new AACodonMutSelMultipleOmega(args.alignment.getValue(), args.treefile.getValue(),
             mutsel_args.profiles.getValue(), mutsel_args.codonfitness.getValue(),
+            mutsel_args.nucstat.getValue(), mutsel_args.nucrelrate.getValue(),
             mutsel_args.omegamode(), mutsel_args.ncat.getValue(), 1,
             mutsel_args.omegancat.getValue(), mutsel_args.omegashift.getValue(),
             mutsel_args.flatfitness.getValue(), mutsel_args.flatcodonfitness.getValue(),

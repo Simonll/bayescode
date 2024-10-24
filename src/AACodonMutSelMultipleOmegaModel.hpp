@@ -185,11 +185,88 @@ std::vector<double> open_codonpreferences(std::string const &file_name, int Nsta
     return fitness_profil;
 }
 
+std::vector<double> open_nucstat(std::string const &file_name, int size) {
+    std::ifstream input_stream(file_name);
+    if (!input_stream) {
+        std::cerr << "nucstat file " << file_name << " doesn't exist" << std::endl;
+    }
+
+    std::string line;
+
+    // skip the header of the file
+    getline(input_stream, line);
+    char sep{' '};
+    long nbr_col = 0;
+    for (char sep_test : std::vector<char>({' ', ',', '\t'})) {
+        long n = std::count(line.begin(), line.end(), sep_test);
+        if (n > nbr_col) {
+            sep = sep_test;
+            nbr_col = n + 1;
+        }
+    }
+    nbr_col -= size;
+
+    getline(input_stream, line);
+    std::vector<double> nucstat_(size, 0.0);
+    std::string word;
+    std::istringstream line_stream(line);
+    unsigned counter{0};
+    while (getline(line_stream, word, sep)) {
+        if (counter >= nbr_col) { nucstat_[counter - nbr_col] = stod(word); }
+        counter++;
+    }
+
+    bool push = true;
+    if (std::abs(std::accumulate(nucstat_.begin(), nucstat_.end(), 0.0) - 1.0) > 1e-5) {
+        std::cerr << "nucstat doesn't sum to 1 for line:\n" << line << std::endl;
+    };
+    return nucstat_;
+}
+
+std::vector<double> open_nucrelrate(std::string const &file_name, int size) {
+    std::ifstream input_stream(file_name);
+    if (!input_stream) {
+        std::cerr << "nucrelrate file " << file_name << " doesn't exist" << std::endl;
+    }
+
+    std::string line;
+
+    // skip the header of the file
+    getline(input_stream, line);
+    char sep{' '};
+    long nbr_col = 0;
+    for (char sep_test : std::vector<char>({' ', ',', '\t'})) {
+        long n = std::count(line.begin(), line.end(), sep_test);
+        if (n > nbr_col) {
+            sep = sep_test;
+            nbr_col = n + 1;
+        }
+    }
+    nbr_col -= size;
+
+    getline(input_stream, line);
+    std::vector<double> nucrelrate_(size, 0.0);
+    std::string word;
+    std::istringstream line_stream(line);
+    unsigned counter{0};
+    while (getline(line_stream, word, sep)) {
+        if (counter >= nbr_col) { nucrelrate_[counter - nbr_col] = stod(word); }
+        counter++;
+    }
+
+    bool push = true;
+    if (std::abs(std::accumulate(nucrelrate_.begin(), nucrelrate_.end(), 0.0) - 1.0) > 1e-5) {
+        std::cerr << "nucrelrate doesn't sum to 1 for line:\n" << line << std::endl;
+    };
+    return nucrelrate_;
+}
 
 class AACodonMutSelMultipleOmega : public ChainComponent {
-    std::string datafile, treefile, aaprofilesfile{"Null"}, codonfitnessfile{"Null"};
-    bool clamp_profiles{false}, clamp_profiles_allocation{false};
-    bool clamp_codonfitness{false};
+    std::string datafile, treefile, aaprofilesfile{"Null"}, codonfitnessfile{"Null"},
+        nucstatfile{"Null"}, nucrelratefile{"Null"};
+    bool clamp_profiles{false}, clamp_profiles_allocation{false}, clamp_nucstat{false},
+        clamp_nucrelrate{false}, clamp_codonfitness{false};
+
     std::unique_ptr<Tracer> tracer;
     std::unique_ptr<const Tree> tree;
 
@@ -201,6 +278,7 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
     int Ntaxa;
     int Nbranch;
     int Nstate;
+
     // Branch lengths
     double blhypermean;
     double blhyperinvshape;
@@ -334,13 +412,16 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
     //! - baseNcat: truncation of the second-level stick-breaking process (by
     //! default: 1)
     AACodonMutSelMultipleOmega(std::string indatafile, std::string intreefile,
-        std::string inaaprofilesfile, std::string incodonprofilesfile, int inomegamode, int inNcat,
-        int inbaseNcat, int inomegaNcat, double inomegashift, bool inflatfitness,
-        bool inflatcodonfitness, std::string indelta_omega_array_file, bool inflatnucstat)
+        std::string inaaprofilesfile, std::string incodonprofilesfile, std::string innucstat,
+        std::string innucrelrate, int inomegamode, int inNcat, int inbaseNcat, int inomegaNcat,
+        double inomegashift, bool inflatfitness, bool inflatcodonfitness,
+        std::string indelta_omega_array_file, bool inflatnucstat)
         : datafile(std::move(indatafile)),
           treefile(std::move(intreefile)),
           aaprofilesfile(std::move(inaaprofilesfile)),
           codonfitnessfile(std::move(incodonprofilesfile)),
+          nucstatfile(std::move(innucstat)),
+          nucrelratefile(std::move(innucrelrate)),
           delta_omega_array_file(std::move(indelta_omega_array_file)),
           omegaNcat(inomegaNcat),
           omega_shift(inomegashift),
@@ -462,6 +543,44 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         } else {
             Random::DirichletSample(nucstat, nucstathypercenter, ((double)Nnuc));
         }
+
+        std::vector<double> nucstat_{};
+        if (!nucstatfile.empty() and nucstatfile != "Null") {
+            if (flatnucstat) {
+                std::cerr << "Giving a nucstat file and setting 'flatnucstat' to true "
+                             "is incompatible. These parameters are exclusive to one another."
+                          << std::endl;
+                exit(1);
+            }
+            nucstat_ = open_nucstat(nucstatfile, Nnuc);
+            clamp_nucstat = true;
+        }
+        std::vector<double> nucrelrate_{};
+        if (!nucrelratefile.empty() and nucrelratefile != "Null") {
+            if (flatnucrelrate) {
+                std::cerr << "Giving a nucrelrate file and setting 'flatnucrelrate' to true "
+                             "is incompatible. These parameters are exclusive to one another."
+                          << std::endl;
+                exit(1);
+            }
+            nucrelrate_ = open_nucrelrate(nucrelratefile, Nrr);
+            clamp_nucrelrate = true;
+        }
+
+        nucrelrate.assign(Nrr, 0);
+        if (!clamp_nucrelrate) {
+            Random::DirichletSample(nucrelrate, std::vector<double>(Nrr, 1.0 / Nrr), ((double)Nrr));
+        } else {
+            std::copy(nucrelrate_.begin(), nucrelrate_.end(), nucrelrate.begin());
+        }
+
+        nucstat.assign(Nnuc, 0);
+        if (!clamp_nucstat) {
+            Random::DirichletSample(nucstat, std::vector<double>(Nnuc, 1.0 / Nnuc), ((double)Nnuc));
+        } else {
+            std::copy(nucstat_.begin(), nucstat_.end(), nucstat.begin());
+        }
+
         nucmatrix = new GTRSubMatrix(Nnuc, nucrelrate, nucstat, true);
 
         // codonfitness
@@ -695,8 +814,11 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         assert(site < Nsite);
         return siteaafitnessarray->GetVal(profile_alloc->GetVal(site))[i];
     }
-    double GetGC() { return nucstat[1]+nucstat[2]; }
-    double GetTsTv() { return (nucrelrate[1]+nucrelrate[4])/(nucrelrate[0]+nucrelrate[2]+nucrelrate[3]+nucrelrate[5]); }
+    double GetGC() { return nucstat[1] + nucstat[2]; }
+    double GetTsTv() {
+        return (nucrelrate[1] + nucrelrate[4]) /
+               (nucrelrate[0] + nucrelrate[2] + nucrelrate[3] + nucrelrate[5]);
+    }
 
     //! return number of aligned sites
     int GetNsite() const { return Nsite; }
@@ -994,17 +1116,15 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
 
             if (nucmode < 2) {
                 if (!flatnucstat) {
-                    if (!flatcodonfitness) { 
-                        MoveCodonNucStat(); 
+                    if (!flatcodonfitness) {
+                        MoveCodonNucStat();
                     } else {
                         MoveNucStat();
                     }
-                } else { 
-                    MoveCodon(); 
+                } else {
+                    MoveCodon();
                 }
-                if (!flatnucrelrate) { 
-                    MoveNucRR(); 
-                }
+                if (!flatnucrelrate) { MoveNucRR(); }
             }
 
             if (omegamode < 2) { MoveOmegaMixture(3); }
@@ -1059,7 +1179,8 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
     }
 
     //! MH move on codonfitnesses and nucstat parameters
-    double MoveCodonNucStat(double tuning_codon, int n_codon, double tuning_stat, int n_stat, int nrep) {
+    double MoveCodonNucStat(
+        double tuning_codon, int n_codon, double tuning_stat, int n_stat, int nrep) {
         double nacc = 0;
         double ntot = 0;
         std::vector<double> BKCodonFitness(codonfitness.size(), 0);
@@ -1089,10 +1210,10 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
 
     void MoveCodonNucStat() {
         int nrep{3};
-        MoveCodonNucStat(1,1,0.1,1,nrep);
-        MoveCodonNucStat(0.1,3,0.1,1,nrep);
-        MoveCodonNucStat(0.01,3,0.01,1,nrep);
-        MoveCodonNucStat(0.001,3,0.01,1,nrep);
+        MoveCodonNucStat(1, 1, 0.1, 1, nrep);
+        MoveCodonNucStat(0.1, 3, 0.1, 1, nrep);
+        MoveCodonNucStat(0.01, 3, 0.01, 1, nrep);
+        MoveCodonNucStat(0.001, 3, 0.01, 1, nrep);
     }
     //! MH move on codonfitnesses parameters
     void MoveCodon() {
