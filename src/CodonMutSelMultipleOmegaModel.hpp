@@ -340,6 +340,9 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     Chrono basechrono;
     Chrono totchrono;
 
+    std::vector<int> codon_to_aa_;
+    std::vector<std::vector<int>> codons_per_aa_;  // codons_per_aa_[20][codons]
+    int current_profile_i_;
   public:
     //-------------------
     // Construction and allocation
@@ -618,6 +621,17 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         siteomegapathsuffstatarray = new OmegaPathSuffStatArray(Nsite);
         componentomegapathsuffstatarray = new OmegaPathSuffStatArray(omegaNcat);
         tracer = std::unique_ptr<Tracer>(new Tracer(*this));
+    }
+
+    void SetupCodonToAA() {
+        codon_to_aa_.resize(GetCodonStateSpace()->GetNstate());
+        codons_per_aa_.assign(20, {});
+        
+        for (int c = 0; c < GetCodonStateSpace()->GetNstate(); c++) {
+            int aa = GetCodonStateSpace()->Translation(c);
+            codon_to_aa_[c] = aa;
+            codons_per_aa_[aa].push_back(c);
+        }
     }
 
     void move(int it) override { Move(); }
@@ -922,6 +936,11 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     //-------------------
     //  Log probs for MH moves
     //-------------------
+    //! log prob factor to be recomputed when moving nucleotide mutation rate and codonfitness
+    //! parameters (nucrelrate, nucstat and codonfitness)
+    double NucRatesCodonLogProb() const { return NucRatesLogPrior() + CodonLogPrior() + PathSuffStatLogProb(); }
+
+    double NucRatesCodonLogProb(int k) const { return NucRatesLogPrior() + CodonLogPrior(k) + PathSuffStatLogProb(k); }
 
     //! log prob factor to be recomputed when moving nucleotide mutation rate
     //! parameters (nucrelrate and nucstat)
@@ -990,7 +1009,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         phyloprocess->Move(frac);
     }
 
-    //! complete series of MCMC moves on all parameters (repeated nrep times)
+    //! complete MCMC move schedule on all parameters
     void MoveParameters(int nrep) {
         for (int rep = 0; rep < nrep; rep++) {
             totchrono.Start();
@@ -998,23 +1017,14 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
             CollectSitePathSuffStat();
 
-            if (nucmode < 2) {
-                if (!flatnucstat && !clamp_nucstat) { MoveNucStat(); }
-                if (!flatnucrelrate && !clamp_nucrelrate) { MoveNucRelRate(); }
-            }
-
             if (omegamode < 2) { MoveOmegaMixture(3); }
 
-            if (!flatfitness) {
-                if (!flatnucstat && !clamp_nucstat) {
-                    chrono.Start();
-                    MoveCodonNucStatMixture(3);
-                    chrono.Stop();
-                } else {
-                    chrono.Start();
-                    MoveCodonMixture(3);
-                    chrono.Stop();
-                }
+            if (nucmode < 2) {
+               
+                chrono.Start();
+                MoveCodonMixture(3);
+                chrono.Stop();
+               
                 basechrono.Start();
                 if (basemode < 2 and !clamp_profiles) { MoveBase(3); }
                 basechrono.Stop();
@@ -1088,23 +1098,23 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
     }
 
-    //! MCMC module for the mixture amino-acid fitness profiles
-    void MoveCodonNucStatMixture(int nrep) {
-        for (int rep = 0; rep < nrep; rep++) {
-            if (!clamp_profiles) {
-                MoveCodonNucStatProfiles();
-                ResampleEmptyProfileComponents();
-            }
-            if (!clamp_profiles_allocation) {
-                ResampleProfileAlloc();
-                ProfileLabelSwitchingMove();
-                ResampleProfileWeights();
-                MoveKappa();
-            }
-            if (!clamp_profiles_allocation or !clamp_profiles) { CorruptCodonMatrices(); }
-        }
+        //! MH move on nucleotide rate parameters
+    void MoveNucRates() {
+        Move::Profile(nucrelrate, 0.1, 1, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.03, 3, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.01, 3, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+
+        Move::Profile(nucstat, 0.1, 1, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucstat, 0.01, 1, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
     }
 
+
+    
     void MoveCodonMixture(int nrep) {
         for (int rep = 0; rep < nrep; rep++) {
             if (!clamp_profiles) {
@@ -1130,28 +1140,15 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     //! MH move on codon fitness profiles (occupied components only)
     void MoveCodonProfiles() {
         CompMoveCodonProfiles(3);
-        MulMoveCodonProfiles(3);
-    }
-
-    void MoveCodonNucStatProfiles() {
-        CompMoveCodonNucStatProfiles(3);
-        MulMoveCodonProfiles(3);
+        // MulMoveCodonProfiles(3);
     }
 
     //! MH move on codon fitness profiles: additive compensated move on pairs
     //! of entries of the vector
     double CompMoveCodonProfiles(int nrep) {
-        MoveCodon(1, 1, nrep);
-        MoveCodon(0.1, 3, nrep);
-        MoveCodon(0.01, 3, nrep);
-        return 1.0;
-    }
-
-    double CompMoveCodonNucStatProfiles(int nrep) {
-        MoveCodonNucStat(1, 1, 0.1, 1, nrep);
-        MoveCodonNucStat(0.1, 3, 0.1, 1, nrep);
-        MoveCodonNucStat(0.01, 3, 0.01, 1, nrep);
-        MoveCodonNucStat(0.001, 3, 0.01, 1, nrep);
+        JointNucCodonMove(0.05, 0.03, 0.01, nrep);
+        JointNucCodonMove(0.025, 0.015, 0.005, nrep);
+        JointNucCodonMove(0.0125, 0.0075, 0.0025, nrep);
         return 1.0;
     }
 
@@ -1168,7 +1165,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     double MoveCodon(double tuning, int n, int nrep) {
         double nacc = 0;
         double ntot = 0;
-        double bk[GetCodonStateSpace()->GetNstate()];
+        std::vector<double> bk(GetCodonStateSpace()->GetNstate());
         for (int i = 0; i < Ncat; i++) {
             if (profile_occupancy->GetVal(i)) {
                 std::vector<double> &codon = (*componentcodonfitnessarray)[i];
@@ -1197,50 +1194,40 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         }
         return nacc / ntot;
     }
+    // MH move joint nucstat + nucrelrate + codonfitness (pour Ncat profils occupés)
+    double JointNucCodonMove(double tuning_nuc=0.05, double tuning_nucrel=0.03, double tuning_codon=0.01, int nrep=10) {
+        double nacc=0, ntot=0;
+        std::vector<double> bknucstat = nucstat, bknucrelrate = nucrelrate;  // Global backup ONCE
 
-    //! MH move on codonfitnesses and nucstat parameters
-    double MoveCodonNucStat(
-        double tuning_codon, int n_codon, double tuning_stat, int n_stat, int nrep) {
-        double nacc = 0;
-        double ntot = 0;
-        double bkcodon[GetCodonStateSpace()->GetNstate()];
-        double bknucstat[GetCodonStateSpace()->GetNstate()];
-        for (int i = 0; i < Ncat; i++) {
-            if (profile_occupancy->GetVal(i)) {
-                std::vector<double> &codon_ = (*componentcodonfitnessarray)[i];
-                std::vector<double> &nucstat_ = nucstat;
-                for (int rep = 0; rep < nrep; rep++) {
-                    for (int l = 0; l < GetCodonStateSpace()->GetNstate(); l++) {
-                        bkcodon[l] = codon_[l];
-                    }
-                    for (int l = 0; l < Nnuc; l++) { bknucstat[l] = nucstat_[l]; }
-                    double deltalogprob =
-                        -CodonLogPrior(i) - PathSuffStatLogProb(i) - NucRatesLogProb();
-                    double loghastings =
-                        Random::ProfileProposeMove(codon_, codon_.size(), tuning_codon, n_codon);
-                    loghastings +=
-                        Random::ProfileProposeMove(nucstat_, nucstat_.size(), tuning_stat, n_stat);
-                    deltalogprob += loghastings;
-                    UpdateMatrices();
-                    CorruptProfileCodonMatrices(i);
-                    deltalogprob += CodonLogPrior(i) + PathSuffStatLogProb(i) + NucRatesLogProb();
-                    int accepted = (log(Random::Uniform()) < deltalogprob);
-                    if (accepted) {
-                        nacc++;
-                    } else {
-                        for (int l = 0; l < GetCodonStateSpace()->GetNstate(); l++) {
-                            codon_[l] = bkcodon[l];
-                        }
-                        for (int l = 0; l < Nnuc; l++) { nucstat_[l] = bknucstat[l]; }
-                        UpdateMatrices();
-                        CorruptProfileCodonMatrices(i);
-                    }
-                    ntot++;
+        for (int i=0; i<Ncat && ntot<1000; i++) {  // Cap ntot pour scaling
+            if (!profile_occupancy->GetVal(i)) continue;
+            std::vector<double> bkcodon = (*componentcodonfitnessarray)[i];
+            double delta = -NucStatLogPrior() - NucRelRateLogPrior() - CodonLogPrior(i) - PathSuffStatLogProb(i);
+
+            for (int rep=0; rep<nrep; rep++) {
+                // Propose joint (Dirichlet tuning·current)
+                double hast_nuc = Random::ProfileProposeMove(nucstat, bknucstat.size(), tuning_nuc,bknucstat.size()/2);
+                double hast_nucrel = Random::ProfileProposeMove(nucrelrate, bknucrelrate.size(), tuning_nucrel,bknucrelrate.size()/2);
+                double hast_codon = Random::ProfileProposeMove((*componentcodonfitnessarray)[i], bkcodon.size(), tuning_codon,bkcodon.size()/2);
+
+                UpdateNucMatrix();
+                CorruptProfileCodonMatrices(i);
+
+                delta += NucStatLogPrior() + NucRelRateLogPrior() + CodonLogPrior(i) + PathSuffStatLogProb(i);
+
+                if (log(Random::Uniform()) < delta) {
+                    nacc++;
+                } else {
+                    nucstat = bknucstat; nucrelrate = bknucrelrate;
+                    (*componentcodonfitnessarray)[i] = bkcodon;
+                    UpdateNucMatrix(); CorruptProfileCodonMatrices(i);  // Restore
                 }
+                ntot++;
             }
         }
-        return nacc / ntot;
+        return nacc/ntot;
     }
+
     //! helper function: log density of Nstate gammas
     double GammaCodonLogPrior(
         const std::vector<double> &x, const std::vector<double> &codoncenter, double codonconc) {
@@ -1705,7 +1692,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     double GetNucRREntropy() const { return Random::GetEntropy(nucrelrate); }
 
     //! return entropy of vector of equilibrium nucleotide composition
-    double GetNucStatEntropy() const { return Random::GetEntropy(nucrelrate); }
+    double GetNucStatEntropy() const { return Random::GetEntropy(nucstat); }
 
     //! return predicted omega induced by the mutation-selection balance
     double GetPredictedOmegaKnot() const {
