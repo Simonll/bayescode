@@ -677,12 +677,6 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "dnds", [this]() { return GetPredictedEffectivedNdS(); });
         model_stat(info, "gc", [this]() { return GetGC(); });
         model_stat(info, "tstv", [this]() { return GetTsTv(); });
-        model_stat(info, "ac", [this]() { return GetAC(); });
-        model_stat(info, "ag", [this]() { return GetAG(); });
-        model_stat(info, "at", [this]() { return GetAT(); });
-        model_stat(info, "cg", [this]() { return GetCG(); });
-        model_stat(info, "ct", [this]() { return GetCT(); });
-        model_stat(info, "gt", [this]() { return GetGT(); });
         model_stat(
             info, "omegaent", [this]() { return Random::GetEntropy(omega_weight->GetArray()); });
         model_stat(info, "ncluster", [this]() { return GetNcluster(); });
@@ -730,20 +724,39 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     double GetNucRR(int i) { return nucrelrate[i]; }
     double GetNucStat(int i) { return nucstat[i]; }
     double GetGC() { return nucstat[1] + nucstat[2]; }
-    double GetTsTv() {
-        return (nucrelrate[1] + nucrelrate[4]) /
-               (nucrelrate[0] + nucrelrate[2] + nucrelrate[3] + nucrelrate[5]);
+    int GetNucRRIndex(int i, int j) {
+        if (i > j) std::swap(i, j);  // Assure i < j
+        return i * (2*4 - i - 3) / 2 + (j - i - 1);
     }
+    double GetTsTv() {
+        double sum = 0.0;
+        for (int i = 0; i < 4 - 1; i++) {
+            for (int j = i + 1; j < 4; j++) {
+                sum += nucstat[i] * nucstat[j] * nucrelrate[GetNucRRIndex(i, j)];
+            }
+        }
+        
+        double ts = (nucstat[0] * nucstat[2] * nucrelrate[GetNucRRIndex(0, 2)] +
+                    nucstat[1] * nucstat[3] * nucrelrate[GetNucRRIndex(1, 3)]);
+        double tv = (
+                    nucstat[0] * nucstat[1] * nucrelrate[GetNucRRIndex(0, 1)]+
+                    nucstat[0] * nucstat[3] * nucrelrate[GetNucRRIndex(0, 3)] +
+                    nucstat[1] * nucstat[2] * nucrelrate[GetNucRRIndex(1, 2)] +
+                    nucstat[2] * nucstat[3] * nucrelrate[GetNucRRIndex(2, 3)]);
+        if (tv < 1e-10) return 0.0;  // Avoid division by zero
+        return ts / tv;
+    }
+
     double GetAC() {return nucrelrate[0];}
     double GetAG() {return nucrelrate[1];}
     double GetAT() {return nucrelrate[2];}
     double GetCG() {return nucrelrate[3];}
     double GetCT() {return nucrelrate[4];}
     double GetGT() {return nucrelrate[5];}
+
     double GetSiteCodonFitness(int site, int i) {
         return sitecodonfitnessarray->GetVal(profile_alloc->GetVal(site))[i];
     }
-
     //! return current omega value for omega mixture of site
     double GetSiteOmega(int site) const { return GetComponentOmega(omega_alloc->GetVal(site)); }
 
