@@ -669,6 +669,12 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "dnds", [this]() { return GetPredictedEffectivedNdS(); });
         model_stat(info, "gc", [this]() { return GetGC(); });
         model_stat(info, "tstv", [this]() { return GetTsTv(); });
+        model_stat(info, "ac", [this]() { return GetAC(); });
+        model_stat(info, "ag", [this]() { return GetAG(); });
+        model_stat(info, "at", [this]() { return GetAT(); });
+        model_stat(info, "cg", [this]() { return GetCG(); });
+        model_stat(info, "ct", [this]() { return GetCT(); });
+        model_stat(info, "gt", [this]() { return GetGT(); });
         model_stat(
             info, "omegaent", [this]() { return Random::GetEntropy(omega_weight->GetArray()); });
         model_stat(info, "ncluster", [this]() { return GetNcluster(); });
@@ -720,6 +726,12 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return (nucrelrate[1] + nucrelrate[4]) /
                (nucrelrate[0] + nucrelrate[2] + nucrelrate[3] + nucrelrate[5]);
     }
+    double GetAC() {return nucrelrate[0];}
+    double GetAG() {return nucrelrate[1];}
+    double GetAT() {return nucrelrate[2];}
+    double GetCG() {return nucrelrate[3];}
+    double GetCT() {return nucrelrate[4];}
+    double GetGT() {return nucrelrate[5];}
     double GetSiteCodonFitness(int site, int i) {
         return sitecodonfitnessarray->GetVal(profile_alloc->GetVal(site))[i];
     }
@@ -1143,14 +1155,6 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         // MulMoveCodonProfiles(3);
     }
 
-    //! MH move on codon fitness profiles: additive compensated move on pairs
-    //! of entries of the vector
-    double CompMoveCodonProfiles(int nrep) {
-        JointNucCodonMove(0.05, 0.03, 0.01, nrep);
-        JointNucCodonMove(0.025, 0.015, 0.005, nrep);
-        JointNucCodonMove(0.0125, 0.0075, 0.0025, nrep);
-        return 1.0;
-    }
 
     //! MH move on codon fitness profiles: multiplicative move (using the
     //! Gamma representation of the Dirichlet)
@@ -1194,21 +1198,60 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         }
         return nacc / ntot;
     }
+
+
+    //! MH move on codon fitness profiles: additive compensated move on pairs
+    //! of entries of the vector
+    double CompMoveCodonProfiles(int nrep) {
+        double acc = 0;
+        // acc += GradientJointNucCodonMove(0.01, nrep);
+        
+        // Move "codon-only" (nuc presque figés)
+        acc += JointNucCodonMove(
+            0.001,  // nucstat quasi fixe
+            0.001,  // nucrelrate quasi fixe
+            0.02,   // codon
+            nrep);
+
+        // Move "nuc-only"
+        acc += JointNucCodonMove(
+            0.06,   // nucstat
+            0.04,   // nucrelrate
+            0.0005, // codon quasi fixe
+            nrep);
+
+        // Move joint moyen
+        acc += JointNucCodonMove(
+            0.03,
+            0.02,
+            0.008,
+            nrep);
+
+        // Move micro raffinement
+        acc += JointNucCodonMove(
+            0.008,
+            0.005,
+            0.001,
+            nrep);
+
+        return acc;
+    }
+
     // MH move joint nucstat + nucrelrate + codonfitness (pour Ncat profils occupés)
     double JointNucCodonMove(double tuning_nuc=0.05, double tuning_nucrel=0.03, double tuning_codon=0.01, int nrep=10) {
         double nacc=0, ntot=0;
-        std::vector<double> bknucstat = nucstat, bknucrelrate = nucrelrate;  // Global backup ONCE
-
-        for (int i=0; i<Ncat && ntot<1000; i++) {  // Cap ntot pour scaling
+        
+        for (int i=0; i<Ncat; i++) {
             if (!profile_occupancy->GetVal(i)) continue;
-            std::vector<double> bkcodon = (*componentcodonfitnessarray)[i];
-            double delta = -NucStatLogPrior() - NucRelRateLogPrior() - CodonLogPrior(i) - PathSuffStatLogProb(i);
+          
 
             for (int rep=0; rep<nrep; rep++) {
+                std::vector<double> bknucstat = nucstat, bknucrelrate = nucrelrate, bkcodon = (*componentcodonfitnessarray)[i];
+                double delta = -NucStatLogPrior() - NucRelRateLogPrior() - CodonLogPrior(i) - PathSuffStatLogProb(i);
                 // Propose joint (Dirichlet tuning·current)
-                double hast_nuc = Random::ProfileProposeMove(nucstat, bknucstat.size(), tuning_nuc,bknucstat.size()/2);
-                double hast_nucrel = Random::ProfileProposeMove(nucrelrate, bknucrelrate.size(), tuning_nucrel,bknucrelrate.size()/2);
-                double hast_codon = Random::ProfileProposeMove((*componentcodonfitnessarray)[i], bkcodon.size(), tuning_codon,bkcodon.size()/2);
+                double hast_nuc = Random::ProfileProposeMove(nucstat, bknucstat.size(), tuning_nuc,1);
+                double hast_nucrel = Random::ProfileProposeMove(nucrelrate, bknucrelrate.size(), tuning_nucrel,2);
+                double hast_codon = Random::ProfileProposeMove((*componentcodonfitnessarray)[i], bkcodon.size(), tuning_codon,15);
 
                 UpdateNucMatrix();
                 CorruptProfileCodonMatrices(i);
@@ -1226,6 +1269,162 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             }
         }
         return nacc/ntot;
+    }
+
+
+    std::vector<double> FlattenNucCodon(int i) {
+        std::vector<double> flat;
+        flat.insert(flat.end(), nucstat.begin(), nucstat.end());
+        flat.insert(flat.end(), nucrelrate.begin(), nucrelrate.end());
+        flat.insert(flat.end(), (*componentcodonfitnessarray)[i].begin(), 
+                   (*componentcodonfitnessarray)[i].end());
+        return flat;
+    }
+    
+    void UnflattenNucCodon(const std::vector<double>& flat, int i) {
+        size_t idx = 0;
+        for (size_t j=0; j<nucstat.size(); j++) nucstat[j] = flat[idx++];
+        for (size_t j=0; j<nucrelrate.size(); j++) nucrelrate[j] = flat[idx++];
+        for (size_t j=0; j<(*componentcodonfitnessarray)[i].size(); j++) 
+            (*componentcodonfitnessarray)[i][j] = flat[idx++];
+    }
+    
+    void NormalizeSimplex(std::vector<double>& v) {
+        double sum = std::accumulate(v.begin(), v.end(), 0.0);
+        for (size_t j=0; j<v.size(); j++) v[j] /= sum;
+    }
+    
+    std::vector<double> ComputeGradientNucCodon(int i, double eps=1e-5) {
+        std::vector<double> flat_backup = FlattenNucCodon(i);
+        double logpi_base = NucStatLogPrior() + NucRelRateLogPrior() + 
+                           CodonLogPrior(i) + PathSuffStatLogProb(i);
+        
+        std::vector<double> grad(flat_backup.size(), 0.0);
+        
+        // Gradient nucstat (dim=4)
+        for (size_t j=0; j<nucstat.size(); j++) {
+            nucstat[j] += eps;
+            NormalizeSimplex(nucstat);
+            UpdateNucMatrix();
+            CorruptProfileCodonMatrices(i);
+            double f_plus = NucStatLogPrior() + NucRelRateLogPrior() + 
+                           CodonLogPrior(i) + PathSuffStatLogProb(i);
+            
+            UnflattenNucCodon(flat_backup, i);  // Restore
+            nucstat[j] -= eps;
+            NormalizeSimplex(nucstat);
+            UpdateNucMatrix();
+            CorruptProfileCodonMatrices(i);
+            double f_minus = NucStatLogPrior() + NucRelRateLogPrior() + 
+                            CodonLogPrior(i) + PathSuffStatLogProb(i);
+            
+            grad[j] = (f_plus - f_minus) / (2.0 * eps);
+            UnflattenNucCodon(flat_backup, i);  // Restore center
+            UpdateNucMatrix();
+            CorruptProfileCodonMatrices(i);
+        }
+        
+        // Gradient nucrelrate (dim=6)
+        size_t offset_nucrel = nucstat.size();
+        for (size_t j=0; j<nucrelrate.size(); j++) {
+            nucrelrate[j] += eps;
+            NormalizeSimplex(nucrelrate);
+            UpdateNucMatrix();
+            CorruptProfileCodonMatrices(i);
+            double f_plus = NucStatLogPrior() + NucRelRateLogPrior() + 
+                           CodonLogPrior(i) + PathSuffStatLogProb(i);
+            
+            UnflattenNucCodon(flat_backup, i);
+            nucrelrate[j] -= eps;
+            NormalizeSimplex(nucrelrate);
+            UpdateNucMatrix();
+            CorruptProfileCodonMatrices(i);
+            double f_minus = NucStatLogPrior() + NucRelRateLogPrior() + 
+                            CodonLogPrior(i) + PathSuffStatLogProb(i);
+            
+            grad[offset_nucrel + j] = (f_plus - f_minus) / (2.0 * eps);
+            UnflattenNucCodon(flat_backup, i);
+            UpdateNucMatrix();
+            CorruptProfileCodonMatrices(i);
+        }
+        
+        // Gradient codon fitness (dim=61)
+        size_t offset_codon = nucstat.size() + nucrelrate.size();
+        for (size_t j=0; j<(*componentcodonfitnessarray)[i].size(); j++) {
+            (*componentcodonfitnessarray)[i][j] += eps;
+            NormalizeSimplex((*componentcodonfitnessarray)[i]);
+            CorruptProfileCodonMatrices(i);
+            double f_plus = NucStatLogPrior() + NucRelRateLogPrior() + 
+                           CodonLogPrior(i) + PathSuffStatLogProb(i);
+            
+            UnflattenNucCodon(flat_backup, i);
+            (*componentcodonfitnessarray)[i][j] -= eps;
+            NormalizeSimplex((*componentcodonfitnessarray)[i]);
+            CorruptProfileCodonMatrices(i);
+            double f_minus = NucStatLogPrior() + NucRelRateLogPrior() + 
+                            CodonLogPrior(i) + PathSuffStatLogProb(i);
+            
+            grad[offset_codon + j] = (f_plus - f_minus) / (2.0 * eps);
+            UnflattenNucCodon(flat_backup, i);
+            CorruptProfileCodonMatrices(i);
+        }
+        
+        return grad;
+    }
+
+    double GradientGuidedMove(int i, double step_size=0.01, int nrep=10) {
+        double nacc = 0, ntot = 0;
+                
+        for (int rep=0; rep<nrep; rep++) {
+            std::vector<double> backup = FlattenNucCodon(i);
+            double logpi_old = NucStatLogPrior() + NucRelRateLogPrior() + 
+                              CodonLogPrior(i) + PathSuffStatLogProb(i);
+            
+            // Compute gradient
+            std::vector<double> grad = ComputeGradientNucCodon(i);
+            
+            // Langevin proposal: x' = x + ε*∇logπ(x) + √(2ε)*N(0,I)
+            std::vector<double> proposal = FlattenNucCodon(i);
+            for (size_t j=0; j<proposal.size(); j++) {
+                proposal[j] += step_size * grad[j] + 
+                              std::sqrt(2.0 * step_size) * Random::sNormal();
+                proposal[j] = std::max(1e-10, proposal[j]);  // Evite négatives
+            }
+            
+            UnflattenNucCodon(proposal, i);
+            NormalizeSimplex(nucstat);
+            NormalizeSimplex(nucrelrate);
+            NormalizeSimplex((*componentcodonfitnessarray)[i]);
+            UpdateNucMatrix();
+            CorruptProfileCodonMatrices(i);
+            
+            double logpi_new = NucStatLogPrior() + NucRelRateLogPrior() + 
+                              CodonLogPrior(i) + PathSuffStatLogProb(i);
+            
+            // Hastings ratio (simplified symmetric approximation)
+            double delta = logpi_new - logpi_old;
+            
+            if (std::log(Random::Uniform()) < delta) {
+                nacc++;
+                backup = proposal;
+            } else {
+                UnflattenNucCodon(backup, i);
+                UpdateNucMatrix();
+                CorruptProfileCodonMatrices(i);
+            }
+            ntot++;
+        }
+        return nacc / ntot;
+    }
+
+    double GradientJointNucCodonMove(double step_size=0.00001, int nrep=5) {
+        double nacc = 0, ntot = 0;
+        for (int i=0; i<Ncat; i++) {
+            if (!profile_occupancy->GetVal(i)) continue;
+            nacc += GradientGuidedMove(i, step_size, nrep) * nrep;
+            ntot += nrep;
+        }
+        return nacc / ntot;
     }
 
     //! helper function: log density of Nstate gammas
