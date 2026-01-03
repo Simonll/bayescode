@@ -473,7 +473,15 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         lengthpathsuffstatarray = new PoissonSuffStatBranchArray(*tree);
 
         nucrelratehypercenter.assign(Nrr, 1.0 / Nrr);
-        nucrelratehyperinvconc = 1.0 / Nrr;
+        
+        // GTR 6 params : [AC, AG, AT, CG, CT, GT]
+        nucrelratehypercenter[0] = 0.1;  // AC
+        nucrelratehypercenter[1] = 0.3;  // AG 
+        nucrelratehypercenter[2] = 0.1;  // AT
+        nucrelratehypercenter[3] = 0.1;  // CG
+        nucrelratehypercenter[4] = 0.3;  // CT
+        nucrelratehypercenter[5] = 0.1;  // GT
+        nucrelratehyperinvconc = 0.1;
 
         nucstathypercenter.assign(Nnuc, 1.0 / Nnuc);
         nucstathyperinvconc = 1.0 / Nnuc;
