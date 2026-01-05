@@ -1064,7 +1064,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
             if (blmode < 2) { 
                 MoveBranchLengths();
-                MoveBranchLengthsGlobal(0.1, 5);
+                //MoveBranchLengthsGlobal(0.1, 5);
             }
             totchrono.Stop();
         }
