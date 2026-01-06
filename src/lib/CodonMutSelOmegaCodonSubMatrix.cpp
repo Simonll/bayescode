@@ -112,6 +112,11 @@ double CodonMutSelOmegaCodonSubMatrix::GetPredictedDS() const {
     return ds;
 }
 
+double CodonMutSelOmegaCodonSubMatrix::GetPredictedDN() const {
+    double dn = 0, ds = 0;
+    std::tie(dn, ds) = GetFlowDNDS();
+    return dn;
+}
 
 std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetRelativeFlowDNDS() const {
     UpdateStationary();

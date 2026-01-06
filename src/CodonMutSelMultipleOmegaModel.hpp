@@ -674,6 +674,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         // 3x: per coding site (and not per nucleotide site)
         model_stat(info, "length", [this]() { return 3 * branchlength->GetTotalLength(); });
         model_stat(info, "ds", [this]() { return GetPredictedEffectivedS(); });
+        model_stat(info, "dn", [this]() { return GetPredictedEffectivedN(); });
         model_stat(info, "dnds", [this]() { return GetPredictedEffectivedNdS(); });
         model_stat(info, "gc", [this]() { return GetGC(); });
         model_stat(info, "tstv", [this]() { return GetTsTv(); });
@@ -2005,6 +2006,15 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         double mean = 0;
         for (int i = 0; i < GetNsite(); i++) {
             mean += GetSiteOmega(i) * sitecodonsubmatrixarray->GetVal(i).GetPredictedDNDS();
+        }
+        mean /= GetNsite();
+        return mean;
+    }
+
+    double GetPredictedEffectivedN() const {
+        double mean = 0;
+        for (int i = 0; i < GetNsite(); i++) {
+            mean += GetSiteOmega(i) * sitecodonsubmatrixarray->GetVal(i).GetPredictedDN();
         }
         mean /= GetNsite();
         return mean;
