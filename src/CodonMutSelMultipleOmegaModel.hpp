@@ -222,7 +222,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     std::string datafile, treefile, profilesfile{"Null"}, nucstatfile{"Null"},
         nucrelratefile{"Null"};
     bool clamp_profiles{false}, clamp_profiles_allocation{false}, clamp_nucstat{false},
-        clamp_nucrelrate{false};
+        clamp_nucrelrate{false}, loaded_nucstat{false}, loaded_nucrelrate{false},
+        loaded_profiles{false}, loaded_delta_omega_array{false}, loaded_profiles_allocation{false};
     std::unique_ptr<Tracer> tracer;
     std::unique_ptr<const Tree> tree;
 
@@ -425,13 +426,14 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 exit(1);
             }
             prefs = open_preferences(profilesfile, GetCodonStateSpace()->GetNstate());
-            clamp_profiles = true;
+            loaded_profiles = true;
             Ncat = static_cast<int>(std::get<0>(prefs).size());
             if (static_cast<int>(std::get<1>(prefs).size()) == Nsite) {
                 std::cout << "Input preferences profiles file has the same number of profiles "
                              "as the alignment, hence site allocations are considered fixed."
                           << std::endl;
-                clamp_profiles_allocation = true;
+                loaded_profiles_allocation = true;
+
             } else {
                 std::cout << "Input preferences profiles file has a smaller number of profiles "
                              "than the alignment, hence site allocations are computed."
@@ -443,7 +445,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         std::vector<double> opened_delta_omega_array;
         if (!delta_omega_array_file.empty() and delta_omega_array_file != "Null") {
             opened_delta_omega_array = open_delta_omega_array(delta_omega_array_file);
-            clamp_delta_omega_array = true;
+            loaded_delta_omega_array = true;
             std::cout << "Input omega values are provided, hence are considered fixed but site "
                          "allocations are computed."
                       << std::endl;
@@ -475,12 +477,12 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         nucrelratehypercenter.assign(Nrr, 1.0 / Nrr);
         
         // GTR 6 params : [AC, AG, AT, CG, CT, GT]
-        nucrelratehypercenter[0] = 0.1;  // AC
-        nucrelratehypercenter[1] = 0.3;  // AG 
-        nucrelratehypercenter[2] = 0.1;  // AT
-        nucrelratehypercenter[3] = 0.1;  // CG
-        nucrelratehypercenter[4] = 0.3;  // CT
-        nucrelratehypercenter[5] = 0.1;  // GT
+        // nucrelratehypercenter[0] = 0.1;  // AC
+        // nucrelratehypercenter[1] = 0.3;  // AG 
+        // nucrelratehypercenter[2] = 0.1;  // AT
+        // nucrelratehypercenter[3] = 0.1;  // CG
+        // nucrelratehypercenter[4] = 0.3;  // CT
+        // nucrelratehypercenter[5] = 0.1;  // GT
         nucrelratehyperinvconc = 0.1;
 
         nucstathypercenter.assign(Nnuc, 1.0 / Nnuc);
@@ -497,7 +499,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 exit(1);
             }
             nucstat_ = open_nucstat(nucstatfile, Nnuc);
-            clamp_nucstat = true;
+            loaded_nucstat = true;
         }
         std::vector<double> nucrelrate_{};
         if (!nucrelratefile.empty() and nucrelratefile != "Null") {
@@ -508,21 +510,25 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 exit(1);
             }
             nucrelrate_ = open_nucrelrate(nucrelratefile, Nrr);
+            loaded_nucrelrate = true;
+        }
+        nucrelrate.assign(Nrr, 0);
+        Random::DirichletSample(nucrelrate, std::vector<double>(Nrr, 1.0 / Nrr), ((double)Nrr));
+        if (loaded_nucrelrate) {
+            std::copy(nucrelrate_.begin(), nucrelrate_.end(), nucrelrate.begin());
+            clamp_nucrelrate = true;
+        } else if (flatnucrelrate) {
+            nucrelrate.assign(Nrr, 1.0 / Nrr);
             clamp_nucrelrate = true;
         }
-
-        nucrelrate.assign(Nrr, 0);
-        if (!clamp_nucrelrate) {
-            Random::DirichletSample(nucrelrate, std::vector<double>(Nrr, 1.0 / Nrr), ((double)Nrr));
-        } else {
-            std::copy(nucrelrate_.begin(), nucrelrate_.end(), nucrelrate.begin());
-        }
-
         nucstat.assign(Nnuc, 0);
-        if (!clamp_nucstat) {
-            Random::DirichletSample(nucstat, std::vector<double>(Nnuc, 1.0 / Nnuc), ((double)Nnuc));
-        } else {
+        Random::DirichletSample(nucstat, std::vector<double>(Nnuc, 1.0 / Nnuc), ((double)Nnuc));
+        if (loaded_nucstat) {
             std::copy(nucstat_.begin(), nucstat_.end(), nucstat.begin());
+            clamp_nucstat = true;
+        } else if (flatnucstat) {
+            nucstat.assign(Nnuc, 1.0 / Nnuc);
+            clamp_nucstat = true;
         }
 
         nucmatrix = new GTRSubMatrix(Nnuc, nucrelrate, nucstat, true);
@@ -561,7 +567,11 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         // Ncat fitness profiles iid from the base distribution
         componentcodonfitnessarray =
             new MultiDirichlet(componentcenterarray, componentconcentrationarray);
-        if (flatfitness) { componentcodonfitnessarray->Flatten(); }
+        if (flatfitness) { 
+            componentcodonfitnessarray->Flatten();  
+            clamp_profiles = true;
+            clamp_profiles_allocation = true;
+        }
 
         // mixture weights (truncated stick breaking process)
         kappa = 1.0;
@@ -580,10 +590,11 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         delta_omegahyperinvshape = 1.0;
         delta_omega_array = new IIDGamma(omegaNcat, delta_omegahypermean, delta_omegahyperinvshape);
         if (omegamode == 3 and omegaNcat == 1) { (*delta_omega_array)[0] = 1.0; }
-        if (clamp_delta_omega_array) {
+        if (loaded_delta_omega_array) {
             for (int omegacat = 0; omegacat < omegaNcat; omegacat++) {
                 (*delta_omega_array)[omegacat] = opened_delta_omega_array[omegacat];
             }
+            clamp_delta_omega_array = true;
         }
         // will be a constant
         omega_weight_kappa = 1.0;
@@ -594,17 +605,19 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         sitecodonfitnessarray =
             new MixtureSelector<std::vector<double>>(componentcodonfitnessarray, profile_alloc);
 
-        if (clamp_profiles) {
+        if (loaded_profiles) {
             for (int cat = 0; cat < Ncat; cat++) {
                 (*componentcodonfitnessarray)[cat] = std::get<0>(prefs)[cat];
             }
+            clamp_profiles = true;
         }
-        if (clamp_profiles_allocation) {
+        if (loaded_profiles_allocation) {
             for (int site = 0; site < Nsite; site++) {
                 (*profile_alloc)[site] = static_cast<unsigned>(std::get<1>(prefs)[site]);
                 assert(sitecodonfitnessarray->GetVal(site).size() ==
                        GetCodonStateSpace()->GetNstate());
             }
+            clamp_profiles_allocation = true;
         }
 
         // Ncat*omegaNcat mut sel codon matrices (based on the Ncat fitness profiles of the mixture,
@@ -676,8 +689,19 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "ds", [this]() { return GetPredictedEffectivedS(); });
         model_stat(info, "dn", [this]() { return GetPredictedEffectivedN(); });
         model_stat(info, "dnds", [this]() { return GetPredictedEffectivedNdS(); });
-        model_stat(info, "gc", [this]() { return GetGC(); });
-        model_stat(info, "tstv", [this]() { return GetTsTv(); });
+        //model_stat(info, "gc", [this]() { return GetGC(); });
+        //model_stat(info, "tstv", [this]() { return GetTsTv(); });
+        model_stat(info, "nucsA", [this]() { return GetA(); });
+        model_stat(info, "nucsC", [this]() { return GetC(); });
+        model_stat(info, "nucsG", [this]() { return GetG(); });
+        model_stat(info, "nucsT", [this]() { return GetT(); });
+        model_stat(info, "nucrrAC", [this]() { return GetAC(); });
+        model_stat(info, "nucrrAG", [this]() { return GetAG(); });
+        model_stat(info, "nucrrAT", [this]() { return GetAT(); });
+        model_stat(info, "nucrrCG", [this]() { return GetCG(); });
+        model_stat(info, "nucrrCT", [this]() { return GetCT(); });
+        model_stat(info, "nucrrGT", [this]() { return GetGT(); });
+
         model_stat(
             info, "omegaent", [this]() { return Random::GetEntropy(omega_weight->GetArray()); });
         model_stat(info, "ncluster", [this]() { return GetNcluster(); });
@@ -730,12 +754,13 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return i * (2*4 - i - 3) / 2 + (j - i - 1);
     }
     double GetTsTv() {
-        double sum = 0.0;
-        for (int i = 0; i < 4 - 1; i++) {
-            for (int j = i + 1; j < 4; j++) {
-                sum += nucstat[i] * nucstat[j] * nucrelrate[GetNucRRIndex(i, j)];
-            }
-        }
+        
+        // double sum = 0.0;
+        // for (int i = 0; i < 4 - 1; i++) {
+        //     for (int j = i + 1; j < 4; j++) {
+        //         sum += nucstat[i] * nucstat[j] * nucrelrate[GetNucRRIndex(i, j)];
+        //     }
+        // }
         
         double ts = (nucstat[0] * nucstat[2] * nucrelrate[GetNucRRIndex(0, 2)] +
                     nucstat[1] * nucstat[3] * nucrelrate[GetNucRRIndex(1, 3)]);
@@ -754,6 +779,11 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     double GetCG() {return nucrelrate[3];}
     double GetCT() {return nucrelrate[4];}
     double GetGT() {return nucrelrate[5];}
+    double GetA() { return nucstat[0]; }
+    double GetC() { return nucstat[1]; }
+    double GetG() { return nucstat[2]; }
+    double GetT() { return nucstat[3]; }
+
 
     double GetSiteCodonFitness(int site, int i) {
         return sitecodonfitnessarray->GetVal(profile_alloc->GetVal(site))[i];
@@ -1213,7 +1243,6 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
         Move::Profile(nucrelrate, 0.01, 3, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-
         Move::Profile(nucstat, 0.1, 1, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
         Move::Profile(nucstat, 0.01, 1, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
@@ -1336,32 +1365,72 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     double JointNucCodonMove(double tuning_nuc=0.05, double tuning_nucrel=0.03, double tuning_codon=0.01, int nrep=10) {
         double nacc=0, ntot=0;
         
-        for (int i=0; i<Ncat; i++) {
-            if (!profile_occupancy->GetVal(i)) continue;
-          
+        // Précalcul de la somme cumulative (si elle n'existe pas déjà)
+        std::vector<double> cumsum(Ncat);
+        double total = 0.0;
+        for (int k = 0; k < Ncat; k++) {
+            // Accès aux poids
+            // weight est un pointeur vers StickBreakingProcess
+            total += weight->GetVal(k);
+            cumsum[k] = total;
+        }         
 
-            for (int rep=0; rep<nrep; rep++) {
-                std::vector<double> bknucstat = nucstat, bknucrelrate = nucrelrate, bkcodon = (*componentcodonfitnessarray)[i];
-                double delta = -NucStatLogPrior() - NucRelRateLogPrior() - CodonLogPrior(i) - PathSuffStatLogProb(i);
-                // Propose joint (Dirichlet tuning·current)
-                double hast_nuc = Random::ProfileProposeMove(nucstat, bknucstat.size(), tuning_nuc,1);
-                double hast_nucrel = Random::ProfileProposeMove(nucrelrate, bknucrelrate.size(), tuning_nucrel,2);
-                double hast_codon = Random::ProfileProposeMove((*componentcodonfitnessarray)[i], bkcodon.size(), tuning_codon,15);
+        for (int rep=0; rep<nrep; rep++) {
 
-                UpdateNucMatrix();
-                CorruptProfileCodonMatrices(i);
+            double u = Random::Uniform() * total;
 
-                delta += NucStatLogPrior() + NucRelRateLogPrior() + CodonLogPrior(i) + PathSuffStatLogProb(i);
-
-                if (log(Random::Uniform()) < delta) {
-                    nacc++;
-                } else {
-                    nucstat = bknucstat; nucrelrate = bknucrelrate;
-                    (*componentcodonfitnessarray)[i] = bkcodon;
-                    UpdateNucMatrix(); CorruptProfileCodonMatrices(i);  // Restore
-                }
-                ntot++;
+            // Recherche dichotomique (Binary Search) pour trouver l'index
+            // std::lower_bound est O(log N), plus rapide que la recherche linéaire O(N)
+            auto it = std::lower_bound(cumsum.begin(), cumsum.end(), u);
+            int i = std::distance(cumsum.begin(), it);
+            if (i >= Ncat) i = Ncat - 1;
+            
+            
+            
+            
+            // Sauvegardes conditionnelles
+            std::vector<double> bknucstat; 
+            std::vector<double> bknucrelrate;
+            std::vector<double> bkcodon;
+            
+            // Propose joint (Dirichlet tuning·current)
+            double delta = - PathSuffStatLogProb(i);
+            if (!clamp_nucstat) {
+                bknucstat = nucstat;
+                delta -= NucStatLogPrior();
+                    // loghastings = 0 vases communicants
+                delta += Random::ProfileProposeMove(nucstat, bknucstat.size(), tuning_nuc,1);
+                delta += NucStatLogPrior();
             }
+            if (!clamp_nucrelrate) {
+                bknucrelrate = nucrelrate;
+                delta -= NucRelRateLogPrior();
+                    // loghastings = 0 vases communicants
+                delta += Random::ProfileProposeMove(nucrelrate, bknucrelrate.size(), tuning_nucrel,2);
+                delta += NucRelRateLogPrior();
+            }
+            if (!clamp_profiles) {
+                bkcodon = (*componentcodonfitnessarray)[i];
+                delta -= CodonLogPrior(i);
+                    // loghastings = 0 vases communicants
+                delta += Random::ProfileProposeMove((*componentcodonfitnessarray)[i], bkcodon.size(), tuning_codon,15);
+                delta += CodonLogPrior(i);
+            }          
+
+            UpdateNucMatrix();
+            CorruptProfileCodonMatrices(i);
+
+            delta += PathSuffStatLogProb(i);
+
+            if (log(Random::Uniform()) < delta) {
+                nacc++;
+            } else {
+                if (!clamp_nucstat) nucstat = bknucstat; 
+                if (!clamp_nucrelrate) nucrelrate = bknucrelrate;
+                if (!clamp_profiles) (*componentcodonfitnessarray)[i] = bkcodon;
+                UpdateNucMatrix(); CorruptProfileCodonMatrices(i);  // Restore
+            }
+            ntot++;
         }
         return nacc/ntot;
     }

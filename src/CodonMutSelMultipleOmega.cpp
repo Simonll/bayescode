@@ -81,13 +81,21 @@ int main(int argc, char *argv[]) {
         cmd.parse();
         chain_driver =
             new ChainDriver(cmd.chain_name(), args.every.getValue(), args.until.getValue());
-        model = new CodonMutSelMultipleOmegaModel(args.alignment.getValue(),
-            args.treefile.getValue(), codonmutsel_args.profiles.getValue(),
-            codonmutsel_args.nucstat.getValue(), codonmutsel_args.nucrelrate.getValue(),
-            codonmutsel_args.omegamode(), codonmutsel_args.ncat.getValue(), 1,
-            codonmutsel_args.omegancat.getValue(), codonmutsel_args.omegashift.getValue(),
-            codonmutsel_args.flatfitness.getValue(), codonmutsel_args.omegaarray.getValue(),
-            codonmutsel_args.flatnucstat.getValue(), codonmutsel_args.flatnucrelrate.getValue());
+        model = new CodonMutSelMultipleOmegaModel(
+            args.alignment.getValue(),
+            args.treefile.getValue(),
+            codonmutsel_args.profiles.getValue(),
+            codonmutsel_args.nucstat.getValue(),
+            codonmutsel_args.nucrelrate.getValue(),
+            codonmutsel_args.omegamode(),
+            codonmutsel_args.ncat.getValue(),
+            1,
+            codonmutsel_args.omegancat.getValue(),
+            codonmutsel_args.omegashift.getValue(),
+            codonmutsel_args.flatfitness.getValue(),
+            codonmutsel_args.omegaarray.getValue(),
+            codonmutsel_args.flatnucstat.getValue(),
+            codonmutsel_args.flatnucrelrate.getValue());
     }
 
     ConsoleLogger console_logger;

@@ -60,7 +60,7 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetFlowDNDS() const {
             int a = GetCodonPosition(pos, i);
             int b = GetCodonPosition(pos, j);
 
-            double nucrate = (*NucMatrix)(a, b);
+            double nucrate = 0.0;
 
             if (!Synonymous(i, j)) {
                 double deltaS = GetLogFitness(j) - GetLogFitness(i);
@@ -75,7 +75,7 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetFlowDNDS() const {
                     pfix = deltaS / (1.0 - exp(-deltaS));
                 }
 
-                dn += nucrate * pfix;
+                dn += (*NucMatrix)(a, b) * pfix;
 
             } else {
                 double deltaS = GetLogFitness(j) - GetLogFitness(i);
@@ -90,7 +90,7 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetFlowDNDS() const {
                     pfix = deltaS / (1.0 - exp(-deltaS));
                 }
 
-                ds += nucrate * pfix;
+                ds += (*NucMatrix)(a, b) * pfix;
             }
         }
 
@@ -138,7 +138,7 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetRelativeFlowDNDS()
             int a = GetCodonPosition(pos, i);
             int b = GetCodonPosition(pos, j);
 
-            double nucrate = (*NucMatrix)(a, b);
+            double nucrate = 0.0;
 
             if (!Synonymous(i, j)) {
                 double deltaS = GetLogFitness(j) - GetLogFitness(i);
@@ -153,8 +153,8 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetRelativeFlowDNDS()
                     pfix = deltaS / (1.0 - exp(-deltaS));
                 }
 
-                mutdn += nucrate;
-                subdn += nucrate * pfix;
+                mutdn += (*NucMatrix)(a, b);
+                subdn += (*NucMatrix)(a, b) * pfix;
 
             } else {
                 double deltaS = GetLogFitness(j) - GetLogFitness(i);
@@ -168,8 +168,8 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetRelativeFlowDNDS()
                 } else {
                     pfix = deltaS / (1.0 - exp(-deltaS));
                 }
-                mutds += nucrate;
-                subds += nucrate * pfix;
+                mutds += (*NucMatrix)(a, b);
+                subds += (*NucMatrix)(a, b) * pfix;
             }
         }
 
