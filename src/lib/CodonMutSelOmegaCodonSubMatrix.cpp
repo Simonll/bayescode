@@ -60,11 +60,12 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetFlowDNDS() const {
             int a = GetCodonPosition(pos, i);
             int b = GetCodonPosition(pos, j);
 
-            double nucrate = 0.0;
+            double nucrate = (*NucMatrix)(a, b);
 
             if (!Synonymous(i, j)) {
                 double deltaS = GetLogFitness(j) - GetLogFitness(i);
                 double pfix;
+                
                 if ((fabs(deltaS)) < 1e-30) {
                     pfix = 1 + deltaS / 2;
                 } else if (deltaS > 50) {
@@ -75,11 +76,12 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetFlowDNDS() const {
                     pfix = deltaS / (1.0 - exp(-deltaS));
                 }
 
-                dn += (*NucMatrix)(a, b) * pfix;
+                dn += nucrate * pfix;
 
             } else {
                 double deltaS = GetLogFitness(j) - GetLogFitness(i);
                 double pfix;
+                
                 if ((fabs(deltaS)) < 1e-30) {
                     pfix = 1 + deltaS / 2;
                 } else if (deltaS > 50) {
@@ -90,7 +92,7 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetFlowDNDS() const {
                     pfix = deltaS / (1.0 - exp(-deltaS));
                 }
 
-                ds += (*NucMatrix)(a, b) * pfix;
+                ds += nucrate * pfix;
             }
         }
 
@@ -138,11 +140,12 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetRelativeFlowDNDS()
             int a = GetCodonPosition(pos, i);
             int b = GetCodonPosition(pos, j);
 
-            double nucrate = 0.0;
+            double nucrate = (*NucMatrix)(a, b);
 
             if (!Synonymous(i, j)) {
                 double deltaS = GetLogFitness(j) - GetLogFitness(i);
                 double pfix;
+                
                 if ((fabs(deltaS)) < 1e-30) {
                     pfix = 1 + deltaS / 2;
                 } else if (deltaS > 50) {
@@ -153,8 +156,8 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetRelativeFlowDNDS()
                     pfix = deltaS / (1.0 - exp(-deltaS));
                 }
 
-                mutdn += (*NucMatrix)(a, b);
-                subdn += (*NucMatrix)(a, b) * pfix;
+                mutdn += nucrate;
+                subdn += nucrate * pfix;
 
             } else {
                 double deltaS = GetLogFitness(j) - GetLogFitness(i);
@@ -168,8 +171,8 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetRelativeFlowDNDS()
                 } else {
                     pfix = deltaS / (1.0 - exp(-deltaS));
                 }
-                mutds += (*NucMatrix)(a, b);
-                subds += (*NucMatrix)(a, b) * pfix;
+                mutds += nucrate;
+                subds += nucrate * pfix;
             }
         }
 
