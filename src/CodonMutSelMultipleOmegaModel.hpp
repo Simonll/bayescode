@@ -1252,9 +1252,9 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     
     void MoveCodonMixture(int nrep) {
-        for (int rep = 0; rep < nrep; rep++) {
-            if (!clamp_profiles) {
-                MoveCodonProfiles();
+        for (int rep = 0; rep < nrep; rep++) {           
+            MoveCodonProfiles();
+            if (clamp_profiles) { 
                 ResampleEmptyProfileComponents();
             }
             if (!clamp_profiles_allocation) {
