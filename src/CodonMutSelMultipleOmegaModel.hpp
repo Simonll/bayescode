@@ -686,9 +686,9 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "lnL", [this]() { return GetLogLikelihood(); });
         // 3x: per coding site (and not per nucleotide site)
         model_stat(info, "length", [this]() { return 3 * branchlength->GetTotalLength(); });
-        model_stat(info, "ds", [this]() { return GetPredictedEffectivedS(); });
-        model_stat(info, "dn", [this]() { return GetPredictedEffectivedN(); });
-        model_stat(info, "dnds", [this]() { return GetPredictedEffectivedNdS(); });
+        model_stat(info, "ds", [this]() { return GetPredictedRelativedS(); });
+        model_stat(info, "dn", [this]() { return GetPredictedRelativedN(); });
+        model_stat(info, "dnds", [this]() { return GetPredictedRelativedNdS(); });
         //model_stat(info, "gc", [this]() { return GetGC(); });
         //model_stat(info, "tstv", [this]() { return GetTsTv(); });
         model_stat(info, "nucsA", [this]() { return GetA(); });

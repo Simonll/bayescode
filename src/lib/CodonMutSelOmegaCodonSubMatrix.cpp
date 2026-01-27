@@ -61,37 +61,24 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetFlowDNDS() const {
             int b = GetCodonPosition(pos, j);
 
             double nucrate = (*NucMatrix)(a, b);
-
+            double deltaS = GetLogFitness(j) - GetLogFitness(i);
+            double pfix;
+            
+            if ((fabs(deltaS)) < 1e-30) {
+                pfix = 1 + deltaS / 2;
+            } else if (deltaS > 50) {
+                pfix = deltaS;
+            } else if (deltaS < -50) {
+                pfix = 0;
+            } else {
+                pfix = deltaS / (1.0 - exp(-deltaS));
+            }
             if (!Synonymous(i, j)) {
-                double deltaS = GetLogFitness(j) - GetLogFitness(i);
-                double pfix;
-                
-                if ((fabs(deltaS)) < 1e-30) {
-                    pfix = 1 + deltaS / 2;
-                } else if (deltaS > 50) {
-                    pfix = deltaS;
-                } else if (deltaS < -50) {
-                    pfix = 0;
-                } else {
-                    pfix = deltaS / (1.0 - exp(-deltaS));
-                }
-
+            
                 dn += nucrate * pfix;
 
             } else {
-                double deltaS = GetLogFitness(j) - GetLogFitness(i);
-                double pfix;
-                
-                if ((fabs(deltaS)) < 1e-30) {
-                    pfix = 1 + deltaS / 2;
-                } else if (deltaS > 50) {
-                    pfix = deltaS;
-                } else if (deltaS < -50) {
-                    pfix = 0;
-                } else {
-                    pfix = deltaS / (1.0 - exp(-deltaS));
-                }
-
+               
                 ds += nucrate * pfix;
             }
         }
@@ -123,7 +110,6 @@ double CodonMutSelOmegaCodonSubMatrix::GetPredictedDN() const {
 std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetRelativeFlowDNDS() const {
     UpdateStationary();
 
-
     double totmutdn = 0;
     double totmutds = 0;
 
@@ -141,45 +127,34 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetRelativeFlowDNDS()
             int b = GetCodonPosition(pos, j);
 
             double nucrate = (*NucMatrix)(a, b);
-
+            double deltaS = GetLogFitness(j) - GetLogFitness(i);
+            double pfix;
+            
+            if ((fabs(deltaS)) < 1e-30) {
+                pfix = 1 + deltaS / 2;
+            } else if (deltaS > 50) {
+                pfix = deltaS;
+            } else if (deltaS < -50) {
+                pfix = 0;
+            } else {
+                pfix = deltaS / (1.0 - exp(-deltaS));
+            }
             if (!Synonymous(i, j)) {
-                double deltaS = GetLogFitness(j) - GetLogFitness(i);
-                double pfix;
-                
-                if ((fabs(deltaS)) < 1e-30) {
-                    pfix = 1 + deltaS / 2;
-                } else if (deltaS > 50) {
-                    pfix = deltaS;
-                } else if (deltaS < -50) {
-                    pfix = 0;
-                } else {
-                    pfix = deltaS / (1.0 - exp(-deltaS));
-                }
 
                 mutdn += nucrate;
                 subdn += nucrate * pfix;
 
             } else {
-                double deltaS = GetLogFitness(j) - GetLogFitness(i);
-                double pfix;
-                if ((fabs(deltaS)) < 1e-30) {
-                    pfix = 1 + deltaS / 2;
-                } else if (deltaS > 50) {
-                    pfix = deltaS;
-                } else if (deltaS < -50) {
-                    pfix = 0;
-                } else {
-                    pfix = deltaS / (1.0 - exp(-deltaS));
-                }
+               
                 mutds += nucrate;
                 subds += nucrate * pfix;
             }
         }
 
-        totmutdn += mStationary[i] * mutdn;
-        totmutds += mStationary[i] * mutds;
         totsubdn += mStationary[i] * subdn;
+        totmutdn += mStationary[i] * mutdn;       
         totsubds += mStationary[i] * subds;
+        totmutds += mStationary[i] * mutds;
     }
 
     return std::make_tuple(totsubdn / totmutdn, totsubds / totmutds);
