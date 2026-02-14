@@ -1335,15 +1335,15 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     //! MH move on codon fitness profiles: additive compensated move on pairs
     //! of entries of the vector
     double CompMoveCodonProfiles(int nrep) {
-        MoveCodon(0.001, 1, 1);
-        MoveCodon(0.001, 2, 1);
-        MoveCodon(0.001, 4, 1);
-        MoveCodon(0.001, 8, 1);
-        MoveCodon(0.001, 16, 1);
-        MoveCodon(0.001, 32, 1);
+        MoveCodon(0.3, 2, 32);
+        MoveCodon(0.15, 4, 16);
+        MoveCodon(0.07, 8, 8);
+        MoveCodon(0.03, 16, 4);
+        MoveCodon(0.01, 32, 2);
+        MoveCodon(1, 2, 1);
         
         return 1.0;
-        
+    }
         //double acc = 0;
         
         
@@ -1376,7 +1376,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         //     nrep);
 
         //return acc;
-    }
+ 
 
  
 
