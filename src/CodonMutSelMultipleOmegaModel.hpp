@@ -337,7 +337,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     bool flatfitness;
     bool flatnucstat;
     bool flatnucrelrate;
-    Chrono chrono;
+    Chrono profilechrono;
     Chrono basechrono;
     Chrono totchrono;
 
@@ -1078,25 +1078,36 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         for (int rep = 0; rep < nrep; rep++) {
             totchrono.Start();
             
-            CollectSitePathSuffStat();
-
-            if (nucmode < 2) {
-               
-                chrono.Start();
-                MoveCodonMixture(3);
-                chrono.Stop();
-               
-                basechrono.Start();
-                if (basemode < 2 and !clamp_profiles) { MoveBase(3); }
-                basechrono.Stop();
-            }
-
-            if (omegamode < 2) { MoveOmegaMixture(3); }
-
             if (blmode < 2) { 
                 MoveBranchLengths();
                 //MoveBranchLengthsGlobal(0.1, 5);
             }
+            
+            CollectSitePathSuffStat();
+
+            if (nucmode < 2) { 
+                
+                if (!clamp_nucrelrate) {
+                    MoveNucRates();
+                }
+                if (!clamp_nucstat) {
+                    MoveNucStat(); 
+                }
+            }
+           
+            if (!clamp_profiles) {
+                profilechrono.Start();
+                MoveCodonMixture(3);
+                profilechrono.Stop();
+
+                basechrono.Start();
+                if (basemode < 2 and !clamp_profiles) { MoveBase(3); }
+                basechrono.Stop();
+            }
+               
+            if (omegamode < 2) { MoveOmegaMixture(1); }
+
+  
             totchrono.Stop();
         }
     }
@@ -1189,72 +1200,69 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     //! MH move on nucleotide rate parameters
 
-    void MoveNucRelRate() {
-        Move::Profile(nucrelrate, 0.5, 2, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.4, 2, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.3, 2, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.2, 2, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.1, 2, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.05, 1, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.04, 1, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.03, 1, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.02, 1, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.01, 1, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-    }
-
     void MoveNucStat() {
-        Move::Profile(nucstat, 0.5, 1, 2, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+        Move::Profile(nucstat, 0.5, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.4, 1, 2, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+        Move::Profile(nucstat, 0.4, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.3, 1, 2, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+        Move::Profile(nucstat, 0.3, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.2, 1, 2, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+        Move::Profile(nucstat, 0.2, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.1, 1, 2, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+        Move::Profile(nucstat, 0.1, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.05, 1, 2, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+        Move::Profile(nucstat, 0.05, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.04, 1, 2, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+        Move::Profile(nucstat, 0.04, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.03, 1, 2, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+        Move::Profile(nucstat, 0.03, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.02, 1, 2, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+        Move::Profile(nucstat, 0.02, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.01, 1, 2, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+        Move::Profile(nucstat, 0.01, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
     }
 
-        //! MH move on nucleotide rate parameters
+    //! MH move on nucleotide rate parameters
     void MoveNucRates() {
-        Move::Profile(nucrelrate, 0.1, 1, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+        Move::Profile(nucrelrate, 0.5, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.03, 3, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+        Move::Profile(nucrelrate, 0.4, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.01, 3, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+        Move::Profile(nucrelrate, 0.3, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.1, 1, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+        Move::Profile(nucrelrate, 0.2, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.01, 1, 3, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+        Move::Profile(nucrelrate, 0.1, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.05, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.04, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.03, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.02, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.01, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.05, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.04, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.03, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.02, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        Move::Profile(nucrelrate, 0.01, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
             &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
     }
 
 
-    
+
     void MoveCodonMixture(int nrep) {
         for (int rep = 0; rep < nrep; rep++) {           
-            MoveCodonProfiles();
-            if (clamp_profiles) { 
+            if (!clamp_profiles) {
+                MoveCodonProfiles();
                 ResampleEmptyProfileComponents();
             }
             if (!clamp_profiles_allocation) {
@@ -1275,8 +1283,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     //! MH move on codon fitness profiles (occupied components only)
     void MoveCodonProfiles() {
-        CompMoveCodonProfiles(3);
-        // MulMoveCodonProfiles(3);
+        CompMoveCodonProfiles(1);
+        MulMoveCodonProfiles(1);
     }
 
 
@@ -1327,39 +1335,51 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     //! MH move on codon fitness profiles: additive compensated move on pairs
     //! of entries of the vector
     double CompMoveCodonProfiles(int nrep) {
-        double acc = 0;
-        // acc += GradientJointNucCodonMove(0.01, nrep);
+        MoveCodon(0.001, 1, 1);
+        MoveCodon(0.001, 2, 1);
+        MoveCodon(0.001, 4, 1);
+        MoveCodon(0.001, 8, 1);
+        MoveCodon(0.001, 16, 1);
+        MoveCodon(0.001, 32, 1);
         
-        // Move "codon-only" (nuc presque figés)
-        acc += JointNucCodonMove(
-            0.001,  // nucstat quasi fixe
-            0.001,  // nucrelrate quasi fixe
-            0.02,   // codon
-            nrep);
+        return 1.0;
+        
+        //double acc = 0;
+        
+        
+        // // Move "codon-only" (nuc presque figés)
+        // acc += JointNucCodonMove(
+        //     0.001,  // nucstat quasi fixe
+        //     0.001,  // nucrelrate quasi fixe
+        //     0.02,   // codon
+        //     nrep);
 
-        // Move "nuc-only"
-        acc += JointNucCodonMove(
-            0.06,   // nucstat
-            0.04,   // nucrelrate
-            0.0005, // codon quasi fixe
-            nrep);
+        // // Move "nuc-only"
+        // acc += JointNucCodonMove(
+        //     0.06,   // nucstat
+        //     0.04,   // nucrelrate
+        //     0.0005, // codon quasi fixe
+        //     nrep);
 
-        // Move joint moyen
-        acc += JointNucCodonMove(
-            0.03,
-            0.02,
-            0.008,
-            nrep);
+        // // Move joint moyen
+        // acc += JointNucCodonMove(
+        //     0.03,
+        //     0.02,
+        //     0.008,
+        //     nrep);
 
-        // Move micro raffinement
-        acc += JointNucCodonMove(
-            0.008,
-            0.005,
-            0.001,
-            nrep);
+        // // Move micro raffinement
+        // acc += JointNucCodonMove(
+        //     0.008,
+        //     0.005,
+        //     0.001,
+        //     nrep);
 
-        return acc;
+        //return acc;
     }
+
+ 
+
 
     // MH move joint nucstat + nucrelrate + codonfitness (pour Ncat profils occupés)
     double JointNucCodonMove(double tuning_nuc=0.05, double tuning_nucrel=0.03, double tuning_codon=0.01, int nrep=10) {
@@ -1383,10 +1403,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             // std::lower_bound est O(log N), plus rapide que la recherche linéaire O(N)
             auto it = std::lower_bound(cumsum.begin(), cumsum.end(), u);
             int i = std::distance(cumsum.begin(), it);
-            if (i >= Ncat) i = Ncat - 1;
-            
-            
-            
+            if (i >= Ncat) i = Ncat - 1;           
             
             // Sauvegardes conditionnelles
             std::vector<double> bknucstat; 
@@ -1436,161 +1453,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     }
 
 
-    // std::vector<double> FlattenNucCodon(int i) {
-    //     std::vector<double> flat;
-    //     flat.insert(flat.end(), nucstat.begin(), nucstat.end());
-    //     flat.insert(flat.end(), nucrelrate.begin(), nucrelrate.end());
-    //     flat.insert(flat.end(), (*componentcodonfitnessarray)[i].begin(), 
-    //                (*componentcodonfitnessarray)[i].end());
-    //     return flat;
-    // }
     
-    // void UnflattenNucCodon(const std::vector<double>& flat, int i) {
-    //     size_t idx = 0;
-    //     for (size_t j=0; j<nucstat.size(); j++) nucstat[j] = flat[idx++];
-    //     for (size_t j=0; j<nucrelrate.size(); j++) nucrelrate[j] = flat[idx++];
-    //     for (size_t j=0; j<(*componentcodonfitnessarray)[i].size(); j++) 
-    //         (*componentcodonfitnessarray)[i][j] = flat[idx++];
-    // }
-    
-    // void NormalizeSimplex(std::vector<double>& v) {
-    //     double sum = std::accumulate(v.begin(), v.end(), 0.0);
-    //     for (size_t j=0; j<v.size(); j++) v[j] /= sum;
-    // }
-    
-    // std::vector<double> ComputeGradientNucCodon(int i, double eps=1e-5) {
-    //     std::vector<double> flat_backup = FlattenNucCodon(i);
-    //     double logpi_base = NucStatLogPrior() + NucRelRateLogPrior() + 
-    //                        CodonLogPrior(i) + PathSuffStatLogProb(i);
-        
-    //     std::vector<double> grad(flat_backup.size(), 0.0);
-        
-    //     // Gradient nucstat (dim=4)
-    //     for (size_t j=0; j<nucstat.size(); j++) {
-    //         nucstat[j] += eps;
-    //         NormalizeSimplex(nucstat);
-    //         UpdateNucMatrix();
-    //         CorruptProfileCodonMatrices(i);
-    //         double f_plus = NucStatLogPrior() + NucRelRateLogPrior() + 
-    //                        CodonLogPrior(i) + PathSuffStatLogProb(i);
-            
-    //         UnflattenNucCodon(flat_backup, i);  // Restore
-    //         nucstat[j] -= eps;
-    //         NormalizeSimplex(nucstat);
-    //         UpdateNucMatrix();
-    //         CorruptProfileCodonMatrices(i);
-    //         double f_minus = NucStatLogPrior() + NucRelRateLogPrior() + 
-    //                         CodonLogPrior(i) + PathSuffStatLogProb(i);
-            
-    //         grad[j] = (f_plus - f_minus) / (2.0 * eps);
-    //         UnflattenNucCodon(flat_backup, i);  // Restore center
-    //         UpdateNucMatrix();
-    //         CorruptProfileCodonMatrices(i);
-    //     }
-        
-    //     // Gradient nucrelrate (dim=6)
-    //     size_t offset_nucrel = nucstat.size();
-    //     for (size_t j=0; j<nucrelrate.size(); j++) {
-    //         nucrelrate[j] += eps;
-    //         NormalizeSimplex(nucrelrate);
-    //         UpdateNucMatrix();
-    //         CorruptProfileCodonMatrices(i);
-    //         double f_plus = NucStatLogPrior() + NucRelRateLogPrior() + 
-    //                        CodonLogPrior(i) + PathSuffStatLogProb(i);
-            
-    //         UnflattenNucCodon(flat_backup, i);
-    //         nucrelrate[j] -= eps;
-    //         NormalizeSimplex(nucrelrate);
-    //         UpdateNucMatrix();
-    //         CorruptProfileCodonMatrices(i);
-    //         double f_minus = NucStatLogPrior() + NucRelRateLogPrior() + 
-    //                         CodonLogPrior(i) + PathSuffStatLogProb(i);
-            
-    //         grad[offset_nucrel + j] = (f_plus - f_minus) / (2.0 * eps);
-    //         UnflattenNucCodon(flat_backup, i);
-    //         UpdateNucMatrix();
-    //         CorruptProfileCodonMatrices(i);
-    //     }
-        
-    //     // Gradient codon fitness (dim=61)
-    //     size_t offset_codon = nucstat.size() + nucrelrate.size();
-    //     for (size_t j=0; j<(*componentcodonfitnessarray)[i].size(); j++) {
-    //         (*componentcodonfitnessarray)[i][j] += eps;
-    //         NormalizeSimplex((*componentcodonfitnessarray)[i]);
-    //         CorruptProfileCodonMatrices(i);
-    //         double f_plus = NucStatLogPrior() + NucRelRateLogPrior() + 
-    //                        CodonLogPrior(i) + PathSuffStatLogProb(i);
-            
-    //         UnflattenNucCodon(flat_backup, i);
-    //         (*componentcodonfitnessarray)[i][j] -= eps;
-    //         NormalizeSimplex((*componentcodonfitnessarray)[i]);
-    //         CorruptProfileCodonMatrices(i);
-    //         double f_minus = NucStatLogPrior() + NucRelRateLogPrior() + 
-    //                         CodonLogPrior(i) + PathSuffStatLogProb(i);
-            
-    //         grad[offset_codon + j] = (f_plus - f_minus) / (2.0 * eps);
-    //         UnflattenNucCodon(flat_backup, i);
-    //         CorruptProfileCodonMatrices(i);
-    //     }
-        
-    //     return grad;
-    // }
-
-    // double GradientGuidedMove(int i, double step_size=0.01, int nrep=10) {
-    //     double nacc = 0, ntot = 0;
-                
-    //     for (int rep=0; rep<nrep; rep++) {
-    //         std::vector<double> backup = FlattenNucCodon(i);
-    //         double logpi_old = NucStatLogPrior() + NucRelRateLogPrior() + 
-    //                           CodonLogPrior(i) + PathSuffStatLogProb(i);
-            
-    //         // Compute gradient
-    //         std::vector<double> grad = ComputeGradientNucCodon(i);
-            
-    //         // Langevin proposal: x' = x + ε*∇logπ(x) + √(2ε)*N(0,I)
-    //         std::vector<double> proposal = FlattenNucCodon(i);
-    //         for (size_t j=0; j<proposal.size(); j++) {
-    //             proposal[j] += step_size * grad[j] + 
-    //                           std::sqrt(2.0 * step_size) * Random::sNormal();
-    //             proposal[j] = std::max(1e-10, proposal[j]);  // Evite négatives
-    //         }
-            
-    //         UnflattenNucCodon(proposal, i);
-    //         NormalizeSimplex(nucstat);
-    //         NormalizeSimplex(nucrelrate);
-    //         NormalizeSimplex((*componentcodonfitnessarray)[i]);
-    //         UpdateNucMatrix();
-    //         CorruptProfileCodonMatrices(i);
-            
-    //         double logpi_new = NucStatLogPrior() + NucRelRateLogPrior() + 
-    //                           CodonLogPrior(i) + PathSuffStatLogProb(i);
-            
-    //         // Hastings ratio (simplified symmetric approximation)
-    //         double delta = logpi_new - logpi_old;
-            
-    //         if (std::log(Random::Uniform()) < delta) {
-    //             nacc++;
-    //             backup = proposal;
-    //         } else {
-    //             UnflattenNucCodon(backup, i);
-    //             UpdateNucMatrix();
-    //             CorruptProfileCodonMatrices(i);
-    //         }
-    //         ntot++;
-    //     }
-    //     return nacc / ntot;
-    // }
-
-    // double GradientJointNucCodonMove(double step_size=0.00001, int nrep=5) {
-    //     double nacc = 0, ntot = 0;
-    //     for (int i=0; i<Ncat; i++) {
-    //         if (!profile_occupancy->GetVal(i)) continue;
-    //         nacc += GradientGuidedMove(i, step_size, nrep) * nrep;
-    //         ntot += nrep;
-    //     }
-    //     return nacc / ntot;
-    // }
-
     //! helper function: log density of Nstate gammas
     double GammaCodonLogPrior(
         const std::vector<double> &x, const std::vector<double> &codoncenter, double codonconc) {
