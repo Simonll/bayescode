@@ -718,8 +718,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "codonent", [this]() { return GetMeanEntropy(); });
         model_stat(info, "meancodonconc", [this]() { return GetMeanComponentConcentration(); });
         model_stat(info, "codoncenterent", [this]() { return GetMeanComponentCodonEntropy(); });
-        model_stat(info, "statent", [this]() { return GetNucRREntropy(); });
-        model_stat(info, "rrent", [this]() { return GetNucStatEntropy(); });
+        model_stat(info, "rrent", [this]() { return GetNucRREntropy(); });
+        model_stat(info, "statent", [this]() { return GetNucStatEntropy(); });
     }
     //-------------------
     // Accessors
