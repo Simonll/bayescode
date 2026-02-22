@@ -524,9 +524,20 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "lnL", [this]() { return GetLogLikelihood(); });
         // 3x: per coding site (and not per nucleotide site)
         model_stat(info, "length", [this]() { return 3 * branchlength->GetTotalLength(); });
-        model_stat(info, "dnds", [this]() { return GetPredictedEffectivedNdS(); });
-        model_stat(info, "omega0", [this]() { return GetPredictedOmegaKnot(); });
         model_stat(info, "omega", [this]() { return GetMeanOmega(); });
+        model_stat(info, "dnds", [this]() { return GetPredictedEffectivedNdS(); });
+        model_stat(info, "nucsA", [this]() { return GetA(); });
+        model_stat(info, "nucsC", [this]() { return GetC(); });
+        model_stat(info, "nucsG", [this]() { return GetG(); });
+        model_stat(info, "nucsT", [this]() { return GetT(); });
+        model_stat(info, "nucrrAC", [this]() { return GetAC(); });
+        model_stat(info, "nucrrAG", [this]() { return GetAG(); });
+        model_stat(info, "nucrrAT", [this]() { return GetAT(); });
+        model_stat(info, "nucrrCG", [this]() { return GetCG(); });
+        model_stat(info, "nucrrCT", [this]() { return GetCT(); });
+        model_stat(info, "nucrrGT", [this]() { return GetGT(); });
+        model_stat(info, "omega0", [this]() { return GetPredictedOmegaKnot(); });
+        
         model_stat(
             info, "omegaent", [this]() { return Random::GetEntropy(omega_weight->GetArray()); });
         model_stat(info, "ncluster", [this]() { return GetNcluster(); });
@@ -549,6 +560,17 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
     //-------------------
     // Accessors
     // ------------------
+
+    double GetAC() {return nucrelrate[0];}
+    double GetAG() {return nucrelrate[1];}
+    double GetAT() {return nucrelrate[2];}
+    double GetCG() {return nucrelrate[3];}
+    double GetCT() {return nucrelrate[4];}
+    double GetGT() {return nucrelrate[5];}
+    double GetA() { return nucstat[0]; }
+    double GetC() { return nucstat[1]; }
+    double GetG() { return nucstat[2]; }
+    double GetT() { return nucstat[3]; }
 
     //! const access to codon state space
     CodonStateSpace *GetCodonStateSpace() const {

@@ -686,6 +686,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "lnL", [this]() { return GetLogLikelihood(); });
         // 3x: per coding site (and not per nucleotide site)
         model_stat(info, "length", [this]() { return 3 * branchlength->GetTotalLength(); });
+        model_stat(info, "omega", [this]() { return GetMeanOmega(); });
         model_stat(info, "ds", [this]() { return GetPredictedRelativedS(); });
         model_stat(info, "dn", [this]() { return GetPredictedRelativedN(); });
         model_stat(info, "dnds", [this]() { return GetPredictedRelativedNdS(); });
@@ -790,6 +791,21 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     }
     //! return current omega value for omega mixture of site
     double GetSiteOmega(int site) const { return GetComponentOmega(omega_alloc->GetVal(site)); }
+
+    double GetSiteOmegaMean() const {
+        double mean = 0.0;
+        
+        if (omegaNcat == 1) { 
+            mean = GetComponentOmega(0);
+            return mean;
+        } else {
+            for (int site = 0; site < Nsite; site++) {
+                mean += GetSiteOmega(site);
+            }
+            return mean / Nsite;
+        }
+    }
+
 
     //! \brief tell the nucleotide matrix that its parameters have changed and
     //! that it should be updated
@@ -1114,77 +1130,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             totchrono.Stop();
         }
     }
-    double MoveBranchLengthsGlobal(double tuning, int nrep) {
-        double nacc = 0;
-        int nbranch = branchlength->GetNbranch(); 
-
-        for (int rep = 0; rep < nrep; rep++) {
-            // Collecter les stats actuelles (beta et counts)
-            CollectLengthSuffStat(); 
-            
-            // 1. Calculer les sommes pour le Delta rapide
-            double total_length_beta = 0; // Somme (beta * length)
-            int total_count = 0;          // Somme (counts)
-            int k_dim = 0;                // Nombre de branches scalées
-
-            for (int j = 0; j < nbranch; j++) {
-                if (!tree->is_root(j)) { // Toujours exclure la racine si elle n'a pas de longueur
-                    double len = (*branchlength)[j];
-                    // lengthpathsuffstatarray contient les stats Poisson pour chaque branche
-                    const PoissonSuffStat& stats = lengthpathsuffstatarray->GetVal(j);
-                    
-                    total_length_beta += stats.GetBeta() * len;
-                    total_count += stats.GetCount();
-                    k_dim++;
-                }
-            }
-
-            // 2. Proposer scaling
-            double m = tuning * (Random::Uniform() - 0.5);
-            double scale = exp(m);
-            
-            // 3. Delta Log Prior
-            // On suppose Gamma ou Exp prior.
-            // Si iid Gamma(alpha, beta_prior): LogP = -beta_prior * x + (alpha-1)ln x
-            // DeltaPrior = -beta_prior * x_old * (scale - 1) + (alpha-1) * m
-            // Mais tu as déjà une fonction GetLogProb(). 
-            // OPTION SIMPLE : Calculer diff GetLogProb() manuellement après modif, 
-            // OU utiliser approximation si prior simple.
-            // Faisons le calcul exact via GetLogProb() pour être sûr.
-            
-            double log_prior_old = branchlength->GetLogProb();
-            
-            // Appliquer Scaling
-            for (int j = 0; j < nbranch; j++) {
-                if (!tree->is_root(j)) (*branchlength)[j] *= scale;
-            }
-            
-            double log_prior_new = branchlength->GetLogProb();
-            double delta_prior = log_prior_new - log_prior_old;
-
-            // 4. Delta Log Likelihood (Formule rapide)
-            // DeltaLik = - (Sum beta*L) * (scale - 1) + (Sum counts) * log(scale)
-            double delta_lik = -total_length_beta * (scale - 1.0) + total_count * m;
-
-            // 5. Hastings
-            double log_hastings = k_dim * m;
-
-            double delta = delta_prior + delta_lik + log_hastings;
-
-            if (log(Random::Uniform()) < delta) {
-                nacc++;
-            } else {
-                // Reject : Restaurer
-                double inv_scale = 1.0 / scale;
-                for (int j = 0; j < nbranch; j++) {
-                    if (!tree->is_root(j)) (*branchlength)[j] *= inv_scale;
-                }
-            }
-        }
-        return nacc / nrep;
-    }
-
-
+    
     //! MH move on base mixture
     void MoveBase(int nrep) {
         if (baseNcat > 1) { ResampleBaseAlloc(); }
