@@ -24,7 +24,7 @@ class CodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
     //! positive real parameter omega (=1 in the standard model).
     CodonMutSelOmegaCodonSubMatrix(const CodonStateSpace *instatespace,
         const SubMatrix *inNucMatrix, const std::vector<double> &incodon, double inomega,
-        bool innormalise = false)
+        bool innormalise = true)
         : SubMatrix(instatespace->GetNstate(), innormalise),
           CodonSubMatrix(instatespace, innormalise),
           NucCodonSubMatrix(instatespace, inNucMatrix, innormalise),

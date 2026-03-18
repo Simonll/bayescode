@@ -24,7 +24,7 @@ class AAMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
     //! nucleotide mutation matrix, a 20-vector of amino-acid fitnesss, and a
     //! positive real parameter omega (=1 in the standard model).
     AAMutSelOmegaCodonSubMatrix(const CodonStateSpace *instatespace, const SubMatrix *inNucMatrix,
-        const std::vector<double> &inaa, double inomega, double inNe, bool innormalise = false)
+        const std::vector<double> &inaa, double inomega, double inNe, bool innormalise = true)
         : SubMatrix(instatespace->GetNstate(), innormalise),
           CodonSubMatrix(instatespace, innormalise),
           NucCodonSubMatrix(instatespace, inNucMatrix, innormalise),
