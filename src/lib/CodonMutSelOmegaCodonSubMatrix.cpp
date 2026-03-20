@@ -27,12 +27,23 @@ void CodonMutSelOmegaCodonSubMatrix::ComputeArray(int i) const {
 
         double deltaS = GetLogFitness(j) - GetLogFitness(i);
         if ((fabs(deltaS)) < 1e-30) {
+            std::cerr << "Warning: deltaS is very small (" << deltaS
+                      << ") for transition from " << i << " to " << j
+                      << ". Using Taylor expansion to avoid numerical issues." << std::endl;
             Q(i, j) *= 1 + deltaS / 2;
         } else if (deltaS > 50) {
+            std::cerr << "Warning: deltaS is very large (" << deltaS
+                      << ") for transition from " << i << " to " << j
+                      << ". Using approximation to avoid numerical issues." << std::endl;
             Q(i, j) *= deltaS;
         } else if (deltaS < -50) {
+            std::cerr << "Warning: deltaS is very negative (" << deltaS
+                      << ") for transition from " << i << " to " << j
+                      << ". Using approximation to avoid numerical issues." << std::endl;
             Q(i, j) = 0;
         } else {
+            std::cerr << "Transition from " << i << " to " << j << " has deltaS = " << deltaS
+                      << ". Computing fixation probability using exact formula." << std::endl;
             Q(i, j) *= deltaS / (1.0 - exp(-deltaS));
         }
 
