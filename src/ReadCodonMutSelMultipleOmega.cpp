@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include "CodonMutSelMultipleOmegaModel.hpp"
@@ -24,10 +25,10 @@ class ReadCodonMutSelMultipleOmegaArgParse : public ReadArgParse {
         "equilibrium from the fitness profiles (instead of ω). "
         "To use combined with the option `confidence_interval`.",
         cmd};
-    SwitchArg sel{"d", "distribution", "Computes selection coefficients", cmd};
-    SwitchArg simu{"", "for_simulation", "Prepare files for jump chain simulations", cmd};
-    SwitchArg ss{"s", "ss",
-        "Computes the mean posterior site-specific amino-acid equilibrium frequencies"
+    SwitchArg selection_coef_distribution{"d", "distribution", "Computes selection coefficients", cmd};
+    SwitchArg prepare_files_for_simulation{"", "for_simulation", "Prepare files for jump chain simulations", cmd};
+    SwitchArg site_specific{"s", "ss",
+        "Computes the mean posterior site-specific codon equilibrium frequencies"
         "(amino-acid fitness profiles).",
         cmd};
     ValueArg<double> omega_pp{"", "omega_threshold",
@@ -61,24 +62,20 @@ int main(int argc, char *argv[]) {
             model.PostPred(chain_name + "_" + "ppred_" + to_string(i) + ".ali");
         }
         cerr << '\n';
-    } else if (read_args.ss.getValue()) {
-        vector<vector<double>> sitestat(model.GetNsite(), {0});
-
+    } else if (read_args.site_specific.getValue()) {
+        vector<vector<double>> sitestat(model.GetNsite(), vector<double>(Nstate, 0.0));      
         for (int step = 0; step < size; step++) {
             cerr << '.';
             cr.skip(every);
             for (int i = 0; i < model.GetNsite(); i++) {
                 vector<double> const &profile = model.GetProfile(i);
-                if (sitestat[i].size() != profile.size()) {
-                    sitestat[i].resize(profile.size(), 0);
-                };
+                assert(profile.size() == Nstate);               
                 for (unsigned k{0}; k < profile.size(); k++) { sitestat[i][k] += profile[k]; }
             }
         }
         cerr << '\n';
 
-        ofstream os((chain_name + ".siteprofiles").c_str());
-
+        ofstream os(chain_name + ".siteprofiles");
         os << "site\tTTT\tTTC\tTTA\tTTG\tTCT\tTCC\tTCA\tTCG\tTAT\tTAC\tTGT\tTGC\tTGG\tCTT\tCTC\tCTA"
               "\tCTG\tCCT\tCCC\tCCA\tCCG\tCAT\tCAC\tCAA\tCAG\tCGT\tCGC\tCGA\tCGG\tATT\tATC\tATA\tAT"
               "G\tACT\tACC\tACA\tACG\tAAT\tAAC\tAAA\tAAG\tAGT\tAGC\tAGA\tAGG\tGTT\tGTC\tGTA\tGTG\tG"
@@ -115,7 +112,7 @@ int main(int argc, char *argv[]) {
         cerr << '\n';
 
         string filename{chain_name + ".ci" + read_args.confidence_interval.getValue() + ".tsv"};
-        ofstream os(filename.c_str());
+        ofstream os(filename);
         os << "#site\tomega_lower\tomega\tomega_upper\n";
 
         double mean = accumulate(gene_omega.begin(), gene_omega.end(), 0.0) / size;
@@ -152,7 +149,7 @@ int main(int argc, char *argv[]) {
         }
         cerr << '\n';
         string filename{chain_name + ".nucmatrix.tsv"};
-        ofstream os(filename.c_str());
+        ofstream os(filename);
         os << "Name\tRate\n";
         for (int i = 0; i < Nnuc; i++) {
             for (int j = 0; j < Nnuc; j++) {
@@ -164,9 +161,9 @@ int main(int argc, char *argv[]) {
             }
         }
         cerr << '\n';
-    } else if (read_args.simu.getValue()) {
+    } else if (read_args.prepare_files_for_simulation.getValue()) {
         string filename{chain_name + ".pvalues"};
-        std::ofstream os(filename.c_str());
+        std::ofstream os(filename);
         model.GetModelStamp(os);
         os << '\n';
         for (int step = 0; step < size; step++) {
@@ -182,70 +179,51 @@ int main(int argc, char *argv[]) {
             }
             os << export_tree.as_string() << '\n';
             for (int i = 0; i < Nnuc; i++) {
-                if (i != Nnuc - 1) {
-                    os << model.GetNucStat(i) << '\t';
-                } else {
-                    os << model.GetNucStat(i) << '\n';
-                }
+                os << model.GetNucStat(i) << (i == Nnuc - 1 ? '\n' : '\t');
             }
             for (int i = 0; i < Nrr; i++) {
-                if (i != Nrr - 1) {
-                    os << model.GetNucRR(i) << '\t';
-                } else {
-                    os << model.GetNucRR(i) << '\n';
-                }
+                os << model.GetNucRR(i) << (i == Nrr - 1 ? '\n' : '\t');
             }
             for (int i = 0; i < model.GetNcat(); i++) {
                 for (int j = 0; j < Nstate; j++) {
-                    if (j != Nstate - 1) {
-                        os << model.GetProfileCodon(i, j) << '\t';
-                    } else {
-                        os << model.GetProfileCodon(i, j) << '\n';
-                    }
+                    os << model.GetProfileCodon(i, j) << (j == Nstate - 1 ? '\n' : '\t');
                 }
             }
             for (int i = 0; i < model.GetNsite(); i++) {
-                if (i != model.GetNsite() - 1) {
-                    os << model.GetProfileAlloc(i) << '\t';
-                } else {
-                    os << model.GetProfileAlloc(i) << '\n';
-                }
+                os << model.GetProfileAlloc(i) << (i == model.GetNsite() - 1 ? '\n' : '\t');
+                
             }
             for (int i = 0; i < model.GetOmegaNcat(); i++) {
-                if (i != model.GetOmegaNcat() - 1) {
-                    os << model.GetOmega(i) << '\t';
-                } else {
-                    os << model.GetOmega(i) << '\n';
-                }
+                os << model.GetOmega(i) << (i == model.GetOmegaNcat() - 1 ? '\n' : '\t');
             }
             for (int i = 0; i < model.GetNsite(); i++) {
-                if (i != model.GetNsite() - 1) {
-                    os << model.GetOmegaAlloc(i) << '\t';
-                } else {
-                    os << model.GetOmegaAlloc(i) << '\n';
-                }
+                os << model.GetOmegaAlloc(i) << (i == model.GetNsite() - 1 ? '\n' : '\t');
             }
         }
         os.close();
-    } else if (read_args.sel.getValue()) {
-        int Nstate = model.GetCodonStateSpace()->GetNstate();
+    } else if (read_args.selection_coef_distribution.getValue()) {
         int Ncat = 241;
         double min = -30;
         double max = 30;
         double bin = 0.25;
-
-        vector<double> ghistoMut(Ncat, {0});
-        vector<double> ghistoSub(Ncat, {0});
-        vector<double> ghistoNonsynMut(Ncat, {0});
-        vector<double> ghistoNonsynSub(Ncat, {0});
-        vector<double> ghistoSynMut(Ncat, {0});
-        vector<double> ghistoSynSub(Ncat, {0});
-
+        vector<double> ghistoMut(Ncat, 0.0);
+        vector<double> ghistoSub(Ncat, 0.0);
+        vector<double> ghistoNonsynMut(Ncat, 0.0);
+        vector<double> ghistoNonsynSub(Ncat, 0.0);
+        vector<double> ghistoSynMut(Ncat, 0.0);
+        vector<double> ghistoSynSub(Ncat, 0.0);
+        vector<double> stat(Nstate, 0.0);
+        vector<double> shistoMut(Ncat, 0.0);
+        vector<double> shistoSub(Ncat, 0.0);
+        vector<double> shistoNonsynMut(Ncat, 0.0);
+        vector<double> shistoNonsynSub(Ncat, 0.0);
+        vector<double> shistoSynMut(Ncat, 0.0);
+        vector<double> shistoSynSub(Ncat, 0.0);
 
         for (int step = 0; step < size; step++) {
             cerr << '.';
             cr.skip(every);
-            int c = 0;
+            
             double statMutRate, deltaS, statSubRate;
             double totalMut = 0;
             double totalSub = 0;
@@ -253,26 +231,25 @@ int main(int argc, char *argv[]) {
             double totalNonsynSub = 0;
             double totalSynMut = 0;
             double totalSynSub = 0;
-            vector<double> stat(Nstate, {0});
-            vector<double> shistoMut(Ncat, {0});
-            vector<double> shistoSub(Ncat, {0});
-            vector<double> shistoNonsynMut(Ncat, {0});
-            vector<double> shistoNonsynSub(Ncat, {0});
-            vector<double> shistoSynMut(Ncat, {0});
-            vector<double> shistoSynSub(Ncat, {0});
+            std::fill(stat.begin(), stat.end(), 0.0);
+            std::fill(shistoMut.begin(), shistoMut.end(), 0.0);
+            std::fill(shistoSub.begin(), shistoSub.end(), 0.0);
+            std::fill(shistoNonsynMut.begin(), shistoNonsynMut.end(), 0.0);
+            std::fill(shistoNonsynSub.begin(), shistoNonsynSub.end(), 0.0);
+            std::fill(shistoSynMut.begin(), shistoSynMut.end(), 0.0);
+            std::fill(shistoSynSub.begin(), shistoSynSub.end(), 0.0);
 
             for (int site = 0; site < model.GetNsite(); site++) {
                 double Z = 0;
-                for (int s = 0; s < Nstate; s++) {
-                    stat[s] = model.GetNucStat(model.GetCodonStateSpace()->GetCodonPosition(0, s)) *
-                              model.GetNucStat(model.GetCodonStateSpace()->GetCodonPosition(1, s)) *
-                              model.GetNucStat(model.GetCodonStateSpace()->GetCodonPosition(2, s)) *
-                              model.GetSiteCodonFitness(site, s);
-                    Z += stat[s];
+                for (int state = 0; state < Nstate; state++) {
+                    stat[state] = model.GetNucStat(model.GetCodonStateSpace()->GetCodonPosition(0, state)) *
+                                  model.GetNucStat(model.GetCodonStateSpace()->GetCodonPosition(1, state)) *
+                                  model.GetNucStat(model.GetCodonStateSpace()->GetCodonPosition(2, state)) *
+                                  model.GetSiteCodonFitness(site, state);
+                    Z += stat[state];
                 }
-                for (int s = 0; s < Nstate; s++) { stat[s] /= Z; }
-                int nonsyncount = 0;
-                int syncount = 0;
+                for (int state = 0; state < Nstate; state++) { stat[state] /= Z; }
+
                 for (int codonFrom = 0; codonFrom < Nstate; codonFrom++) {
                     for (auto codonTo : model.GetCodonStateSpace()->GetNeighbors(codonFrom)) {
                         double pos =
@@ -289,39 +266,21 @@ int main(int argc, char *argv[]) {
                         }
                         statMutRate =
                             model.GetNucRR(nucRRIndex) * model.GetNucStat(nucTo) * stat[codonFrom];
+                        
                         deltaS = log(model.GetSiteCodonFitness(site, codonTo)) -
                                  log(model.GetSiteCodonFitness(site, codonFrom));
 
-
                         if ((fabs(deltaS)) < 1e-30) {
-                            statSubRate = statMutRate * 1.0 / (1.0 - (deltaS / 2));
+                            statSubRate = statMutRate / (1.0 - deltaS / 2.0);
                         } else {
                             statSubRate = statMutRate * (deltaS / (1.0 - exp(-deltaS)));
                         }
 
                         if (!model.GetCodonStateSpace()->Synonymous(codonFrom, codonTo)) {
                             statSubRate *= model.GetSiteOmega(site);
-                            nonsyncount++;
-                        } else {
-                            syncount++;
                         }
-
-                        if (deltaS < min) {
-                            c = 0;
-                        } else if (deltaS > max) {
-                            c = Ncat - 1;
-                        } else {
-                            c = 0;
-                            double tmp = min + ((double)c * bin) - bin / 2 + bin;
-                            do {
-                                c++;
-                                tmp = min + ((double)(c)*bin) - bin / 2 + bin;
-                            } while (tmp < deltaS);
-                        }
-                        if (c == Ncat) {
-                            cout << "error, c==Ncat.\n";
-                            cout.flush();
-                        }
+                        int c = std::max(0, std::min(Ncat - 1, static_cast<int>(std::floor((deltaS - min) / bin))));
+                        // int c = std::clamp(static_cast<int>(std::floor((deltaS - min) / bin)), 0, Ncat - 1);
 
                         if (!model.GetCodonStateSpace()->Synonymous(codonFrom, codonTo)) {
                             shistoNonsynMut[c] += statMutRate;
@@ -341,8 +300,7 @@ int main(int argc, char *argv[]) {
                     }
                 }
             }
-
-            for (c = 0; c < Ncat; c++) {
+            for (int c = 0; c < Ncat; c++) {
                 ghistoMut[c] += shistoMut[c] / totalMut;
                 ghistoSub[c] += shistoSub[c] / totalSub;
                 ghistoNonsynMut[c] += shistoNonsynMut[c] / totalNonsynMut;
@@ -351,12 +309,12 @@ int main(int argc, char *argv[]) {
                 ghistoSynSub[c] += shistoSynSub[c] / totalSynSub;
             }
         }
-        ofstream mutmutsel_os((chain_name + ".mutsel").c_str(), std::ios::out);
-        ofstream mutsubsel_os((chain_name + ".subsel").c_str(), std::ios::out);
-        ofstream nonsynmutmutsel_os((chain_name + ".nonsynmutsel").c_str(), std::ios::out);
-        ofstream nonsynmutsubsel_os((chain_name + ".nonsynsubsel").c_str(), std::ios::out);
-        ofstream synmutmutsel_os((chain_name + ".synmutsel").c_str(), std::ios::out);
-        ofstream synmutsubsel_os((chain_name + ".synsubsel").c_str(), std::ios::out);
+        ofstream mutmutsel_os(chain_name + ".mutsel", std::ios::out);
+        ofstream mutsubsel_os(chain_name + ".subsel", std::ios::out);
+        ofstream nonsynmutmutsel_os(chain_name + ".nonsynmutsel", std::ios::out);
+        ofstream nonsynmutsubsel_os(chain_name + ".nonsynsubsel", std::ios::out);
+        ofstream synmutmutsel_os(chain_name + ".synmutsel", std::ios::out);
+        ofstream synmutsubsel_os(chain_name + ".synsubsel", std::ios::out);
 
         for (int c = 0; c < Ncat; c++) {
             mutmutsel_os << (min + (c * bin)) << "\t" << (ghistoMut[c] / size) << '\n';
@@ -383,7 +341,7 @@ int main(int argc, char *argv[]) {
         cerr << '\n';
 
         string filename{chain_name + ".omegappgt" + to_string(read_args.omega_pp.getValue())};
-        ofstream os(filename.c_str());
+        ofstream os(filename);
         if (model.FlatFitness()) {
             os << "#site\tp(ω>" << read_args.omega_pp.getValue() << ")\tω\n";
         } else {
