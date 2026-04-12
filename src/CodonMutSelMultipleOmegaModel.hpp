@@ -908,10 +908,10 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     double BaseStickBreakingLogPrior() const { return baseweight->GetLogProb(basekappa); }
 
     //! log prior over concentration parameters kappa of stick-breaking mixture of
-    //! amino-acid profiles
+    //! codon fitness profiles
     double StickBreakingHyperLogPrior() const { return -kappa / 10; }
 
-    //! log prior over weights of stick breaking process of amino-acid profiles
+    //! log prior over weights of stick breaking process of codon fitness profiles
     double StickBreakingLogPrior() const { return weight->GetLogProb(kappa); }
 
     //! log prior over base center and concentration parameters
@@ -935,10 +935,10 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return total;
     }
 
-    //! log prior of amino-acid fitness profiles
+    //! log prior of codon fitness profiles
     double CodonLogPrior() const { return componentcodonfitnessarray->GetLogProb(); }
 
-    //! log prior of amino-acid fitness profile k
+    //! log prior of codon fitness profile k
     double CodonLogPrior(int k) const { return componentcodonfitnessarray->GetLogProb(k); }
 
     //-------------------
@@ -974,7 +974,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return componentomegapathsuffstatarray->GetVal(k).GetLogProb(GetComponentOmega(k));
     }
 
-    //! return log prob of first-level mixture components (i.e. all amino-acid
+    //! return log prob of first-level mixture components (i.e. all codon
     //! profiles drawn from component k of the base distribution), as a function
     //! of the center and concentration parameters of this component
     double BaseSuffStatLogProb(int k) const {
@@ -1672,7 +1672,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
 
     //! return number of occupied components in first-level mixture (mixture of
-    //! amino-acid fitness profiles)
+    //! codon fitness profiles)
     int GetNcluster() const {
         int n = 0;
         for (int i = 0; i < Ncat; i++) {
