@@ -690,7 +690,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "lnL", [this]() { return GetLogLikelihood(); });
         // 3x: per coding site (and not per nucleotide site)
         model_stat(info, "length", [this]() { return 3 * branchlength->GetTotalLength(); });
-        model_stat(info, "omega", [this]() { return GetMeanOmega(); });
+        model_stat(info, "omega", [this]() { return GetMeanComponentOmega(); });
         model_stat(info, "ds", [this]() { return GetPredictedRelativedS(); });
         model_stat(info, "dn", [this]() { return GetPredictedRelativedN(); });
         model_stat(info, "dnds", [this]() { return GetPredictedRelativedNdS(); });
@@ -1729,7 +1729,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
 
     //! return mean omega
-    double GetMeanOmega() const {
+    double GetMeanComponentOmega() const {
         double tot = 0;
         for (int i{0}; i < omegaNcat; i++) { tot += GetComponentOmega(i); }
         return tot / omegaNcat;
