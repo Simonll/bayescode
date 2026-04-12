@@ -680,8 +680,6 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "ds", [this]() { return GetPredictedRelativedS(); });
         model_stat(info, "dn", [this]() { return GetPredictedRelativedN(); });
         model_stat(info, "dnds", [this]() { return GetPredictedRelativedNdS(); });
-        //model_stat(info, "gc", [this]() { return GetGC(); });
-        //model_stat(info, "tstv", [this]() { return GetTsTv(); });
         model_stat(info, "nucsA", [this]() { return GetA(); });
         model_stat(info, "nucsC", [this]() { return GetC(); });
         model_stat(info, "nucsG", [this]() { return GetG(); });
@@ -739,31 +737,10 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     double GetNucRR(int i) { return nucrelrate[i]; }
     double GetNucStat(int i) { return nucstat[i]; }
-    double GetGC() { return nucstat[1] + nucstat[2]; }
     int GetNucRRIndex(int i, int j) {
         if (i > j) std::swap(i, j);  // Assure i < j
         return i * (2*4 - i - 3) / 2 + (j - i - 1);
     }
-    double GetTsTv() {
-        
-        // double sum = 0.0;
-        // for (int i = 0; i < 4 - 1; i++) {
-        //     for (int j = i + 1; j < 4; j++) {
-        //         sum += nucstat[i] * nucstat[j] * nucrelrate[GetNucRRIndex(i, j)];
-        //     }
-        // }
-        
-        double ts = (nucstat[0] * nucstat[2] * nucrelrate[GetNucRRIndex(0, 2)] +
-                    nucstat[1] * nucstat[3] * nucrelrate[GetNucRRIndex(1, 3)]);
-        double tv = (
-                    nucstat[0] * nucstat[1] * nucrelrate[GetNucRRIndex(0, 1)]+
-                    nucstat[0] * nucstat[3] * nucrelrate[GetNucRRIndex(0, 3)] +
-                    nucstat[1] * nucstat[2] * nucrelrate[GetNucRRIndex(1, 2)] +
-                    nucstat[2] * nucstat[3] * nucrelrate[GetNucRRIndex(2, 3)]);
-        if (tv < 1e-10) return 0.0;  // Avoid division by zero
-        return ts / tv;
-    }
-
     double GetAC() {return nucrelrate[0];}
     double GetAG() {return nucrelrate[1];}
     double GetAT() {return nucrelrate[2];}
