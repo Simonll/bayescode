@@ -70,6 +70,7 @@ std::vector<double> open_delta_omega_array(std::string const &file_name) {
     std::ifstream input_stream(file_name);
     if (!input_stream) {
         std::cerr << "Delta-omega array file " << file_name << " doesn't exist" << std::endl;
+        exit(1);
     }
 
     std::string line;
@@ -94,6 +95,7 @@ std::tuple<std::vector<std::vector<double>>, std::vector<size_t>> open_preferenc
     std::ifstream input_stream(file_name);
     if (!input_stream) {
         std::cerr << "Preferences file " << file_name << " doesn't exist" << std::endl;
+        exit(1);
     }
 
     std::string line;
@@ -147,6 +149,7 @@ std::vector<double> open_nucstat(std::string const &file_name, int size) {
     std::ifstream input_stream(file_name);
     if (!input_stream) {
         std::cerr << "nucstat file " << file_name << " doesn't exist" << std::endl;
+        exit(1);
     }
 
     std::string line;
@@ -185,6 +188,7 @@ std::vector<double> open_nucrelrate(std::string const &file_name, int size) {
     std::ifstream input_stream(file_name);
     if (!input_stream) {
         std::cerr << "nucrelrate file " << file_name << " doesn't exist" << std::endl;
+        exit(1);
     }
 
     std::string line;
