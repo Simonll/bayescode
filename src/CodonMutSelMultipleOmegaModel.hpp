@@ -345,9 +345,6 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     Chrono basechrono;
     Chrono totchrono;
 
-    std::vector<int> codon_to_aa_;
-    std::vector<std::vector<int>> codons_per_aa_;  // codons_per_aa_[20][codons]
-    int current_profile_i_;
   public:
     //-------------------
     // Construction and allocation
@@ -646,17 +643,6 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         siteomegapathsuffstatarray = new OmegaPathSuffStatArray(Nsite);
         componentomegapathsuffstatarray = new OmegaPathSuffStatArray(omegaNcat);
         tracer = std::unique_ptr<Tracer>(new Tracer(*this));
-    }
-
-    void SetupCodonToAA() {
-        codon_to_aa_.resize(Nstate);
-        codons_per_aa_.assign(20, {});
-        
-        for (int c = 0; c < Nstate; c++) {
-            int aa = GetCodonStateSpace()->Translation(c);
-            codon_to_aa_[c] = aa;
-            codons_per_aa_[aa].push_back(c);
-        }
     }
 
     void move(int it) override { Move(); }
