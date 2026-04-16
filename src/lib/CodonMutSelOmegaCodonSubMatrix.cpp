@@ -1,6 +1,13 @@
 #include "CodonMutSelOmegaCodonSubMatrix.hpp"
 #include <tuple>
 
+void CodonMutSelOmegaCodonSubMatrix::Normalise() const {
+    double norm = NucMatrix->GetRate() * 3;
+    for (int i = 0; i < Nstate; i++) {
+        for (int j = 0; j < Nstate; j++) { Q(i, j) /= norm; }
+    }
+}
+
 void CodonMutSelOmegaCodonSubMatrix::ComputeStationary() const {
     // compute stationary probabilities
     double total = 0;

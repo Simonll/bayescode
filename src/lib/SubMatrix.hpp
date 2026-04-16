@@ -62,7 +62,7 @@ class SubMatrix {
     bool isNormalised() const { return normalise; }
 
     //! normalize the matrix
-    void Normalise() const;
+    virtual void Normalise() const;
 
     //! get the normalization factor
     double GetRate() const;

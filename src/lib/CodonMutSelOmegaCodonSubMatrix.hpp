@@ -70,7 +70,7 @@ class CodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
   protected:
     void ComputeArray(int i) const override;
     void ComputeStationary() const override;
-
+    void Normalise() const override;
     // fitness precomputation
     std::vector<double> fitnesses;
     std::vector<double> logfitnesses;
