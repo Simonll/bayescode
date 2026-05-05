@@ -31,6 +31,7 @@ class GTRSubMatrix : public virtual SubMatrix {
   protected:
     void ComputeArray(int i) const override;
     void ComputeStationary() const override {}
+    double GetRate() const override;
 
     const std::vector<double> &mRelativeRate;
     int Nrr;

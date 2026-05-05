@@ -65,7 +65,7 @@ class SubMatrix {
     virtual void Normalise() const;
 
     //! get the normalization factor
-    double GetRate() const;
+    virtual double GetRate() const;
 
     //! multiply all entries by a scalar e
     void ScalarMul(double e);

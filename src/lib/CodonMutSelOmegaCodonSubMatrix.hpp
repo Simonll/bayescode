@@ -24,7 +24,7 @@ class CodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
     //! positive real parameter omega (=1 in the standard model).
     CodonMutSelOmegaCodonSubMatrix(const CodonStateSpace *instatespace,
         const SubMatrix *inNucMatrix, const std::vector<double> &incodon, double inomega,
-        bool innormalise = true)
+        bool innormalise = false)
         : SubMatrix(instatespace->GetNstate(), innormalise),
           CodonSubMatrix(instatespace, innormalise),
           NucCodonSubMatrix(instatespace, inNucMatrix, innormalise),
@@ -70,7 +70,6 @@ class CodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
   protected:
     void ComputeArray(int i) const override;
     void ComputeStationary() const override;
-    void Normalise() const override;
     // fitness precomputation
     std::vector<double> fitnesses;
     std::vector<double> logfitnesses;
