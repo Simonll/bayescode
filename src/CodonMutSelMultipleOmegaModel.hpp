@@ -1550,8 +1550,10 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     void MoveOmegaMixture(int nrep) {
         CollectSiteOmegaPathSuffStat();
         for (int rep = 0; rep < nrep; rep++) {
-            ResampleOmegaAlloc();
-            UpdateOmegaOccupancies();
+            if (omegaNcat > 1) { 
+                ResampleOmegaAlloc(); 
+                UpdateOmegaOccupancies();
+            }
             if (!clamp_delta_omega_array) {
                 CollectComponentOmegaPathSuffStat();
                 MoveOmegaValues(1.0, 3);
@@ -1559,7 +1561,9 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 ResampleEmptyOmegaComponents();
                 MoveOmegaHyper();
             }
-            ResampleOmegaWeights();
+            if (omegaNcat > 1) {
+                ResampleOmegaWeights();
+            }
         }
         CorruptCodonMatrices();
     }
