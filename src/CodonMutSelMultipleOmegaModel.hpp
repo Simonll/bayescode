@@ -566,6 +566,10 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             clamp_profiles_allocation = true;
         }
 
+        if(Ncat == 1) {
+            clamp_profiles_allocation = true;
+        }
+
         // mixture weights (truncated stick breaking process)
         kappa = 1.0;
         weight = new StickBreakingProcess(Ncat, kappa);
@@ -1092,7 +1096,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     
     //! MH move on base mixture
     void MoveBase(int nrep) {
-        if (baseNcat > 1) { ResampleBaseAlloc(); }
+        if (baseNcat > 1 && Ncat > 1) { ResampleBaseAlloc(); }
         MoveBaseMixture(nrep);
     }
 
@@ -1173,7 +1177,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 MoveCodonProfiles();
                 ResampleEmptyProfileComponents();
             }
-            if (!clamp_profiles_allocation) {
+            if (!clamp_profiles_allocation && Ncat > 1) {
                 ResampleProfileAlloc();
                 ProfileLabelSwitchingMove();
                 ResampleProfileWeights();
