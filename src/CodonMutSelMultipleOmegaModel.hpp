@@ -1183,7 +1183,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 ResampleProfileWeights();
                 MoveKappa();
             }
-            if (!clamp_profiles_allocation or !clamp_profiles) { CorruptCodonMatrices(); }
+            if (!clamp_profiles_allocation || !clamp_profiles) { CorruptCodonMatrices(); }
         }
     }
 
