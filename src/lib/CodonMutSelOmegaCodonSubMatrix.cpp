@@ -129,7 +129,10 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetRelativeFlowDNDS()
         totmutds += mStationary[i] * mutds;
     }
 
-    return std::make_tuple(totsubdn / totmutdn, totsubds / totmutds);
+    // guard against division by zero (degenerate state space)
+    double rdn = (totmutdn > 0) ? totsubdn / totmutdn : 0.0;
+    double rds = (totmutds > 0) ? totsubds / totmutds : 0.0;
+    return std::make_tuple(rdn, rds);
 }
 
 

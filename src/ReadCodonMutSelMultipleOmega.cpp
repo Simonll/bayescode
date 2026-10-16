@@ -92,6 +92,10 @@ int main(int argc, char *argv[]) {
         cerr << '\n';
     } else if (!read_args.confidence_interval.getValue().empty()) {
         double ci = stod(read_args.confidence_interval.getValue());
+        if (ci < 0.0 || ci > 1.0) {
+            std::cerr << "error: confidence_interval must be in [0,1], got " << ci << "\n";
+            exit(1);
+        }
         vector<vector<double>> omega(model.GetNsite());
         vector<double> gene_omega{};
         double upper = max(ci, 1.0 - ci);
@@ -267,10 +271,10 @@ int main(int argc, char *argv[]) {
                         statMutRate =
                             model.GetNucRR(nucRRIndex) * model.GetNucStat(nucTo) * stat[codonFrom];
                         
-                        // log-fitness with the same +1e-8 floor as the substitution matrix,
+                        // log-fitness with the same floor as the substitution matrix,
                         // so the selection coefficients match the matrix they describe.
-                        deltaS = log(model.GetSiteCodonFitness(site, codonTo) + 1e-8) -
-                                 log(model.GetSiteCodonFitness(site, codonFrom) + 1e-8);
+                        deltaS = log(model.GetSiteCodonFitness(site, codonTo) + kFitnessFloor) -
+                                 log(model.GetSiteCodonFitness(site, codonFrom) + kFitnessFloor);
 
                         statSubRate = statMutRate * FixationFactor(deltaS);
 

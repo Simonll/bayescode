@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Chrono.hpp"
 #include "CodonMutSelCodonMatrixBidimArray.hpp"
 #include "CodonSequenceAlignment.hpp"
@@ -65,7 +67,7 @@
 
 
 //! Open a file
-std::vector<double> open_delta_omega_array(std::string const &file_name) {
+inline std::vector<double> open_delta_omega_array(std::string const &file_name) {
     std::vector<double> delta_omega_array{};
     std::ifstream input_stream(file_name);
     if (!input_stream) {
@@ -80,14 +82,14 @@ std::vector<double> open_delta_omega_array(std::string const &file_name) {
     return delta_omega_array;
 }
 
-double distance(std::vector<double> const &v1, std::vector<double> const &v2) {
+inline double distance(std::vector<double> const &v1, std::vector<double> const &v2) {
     double tot = 0;
     assert(v1.size() == v2.size());
     for (size_t i = 0; i < v1.size(); i++) { tot += abs(v1[i] - v2[i]); }
     return tot;
 }
 
-std::tuple<std::vector<std::vector<double>>, std::vector<size_t>> open_preferences(
+inline std::tuple<std::vector<std::vector<double>>, std::vector<size_t>> open_preferences(
     std::string const &file_name, int Nstate) {
     std::vector<std::vector<double>> fitness_profiles{};
     std::vector<size_t> alloc;
@@ -112,15 +114,28 @@ std::tuple<std::vector<std::vector<double>>, std::vector<size_t>> open_preferenc
         }
     }
     nbr_col -= Nstate;
+    if (nbr_col < 0) {
+        std::cerr << "error in preferences file " << file_name
+                  << ": header has fewer than " << Nstate << " columns\n";
+        exit(1);
+    }
 
     while (getline(input_stream, line)) {
+        if (line.empty()) { continue; }
         std::vector<double> fitness_profil(Nstate, 0.0);
         std::string word;
         std::istringstream line_stream(line);
         unsigned counter{0};
 
         while (getline(line_stream, word, sep)) {
-            if (counter >= nbr_col) { fitness_profil[counter - nbr_col] = stod(word); }
+            if (counter >= nbr_col) {
+                if (counter - nbr_col >= (unsigned)Nstate) {
+                    std::cerr << "error in preferences file " << file_name
+                              << ": row has more than " << Nstate << " fitness columns\n";
+                    exit(1);
+                }
+                fitness_profil[counter - nbr_col] = stod(word);
+            }
             counter++;
         }
 
@@ -145,7 +160,7 @@ std::tuple<std::vector<std::vector<double>>, std::vector<size_t>> open_preferenc
     return std::make_tuple(fitness_profiles, alloc);
 }
 
-std::vector<double> open_nucstat(std::string const &file_name, int size) {
+inline std::vector<double> open_nucstat(std::string const &file_name, int size) {
     std::ifstream input_stream(file_name);
     if (!input_stream) {
         std::cerr << "nucstat file " << file_name << " doesn't exist" << std::endl;
@@ -166,6 +181,11 @@ std::vector<double> open_nucstat(std::string const &file_name, int size) {
         }
     }
     nbr_col -= size;
+    if (nbr_col < 0) {
+        std::cerr << "error in nucstat file " << file_name << ": header has fewer than "
+                  << size << " columns\n";
+        exit(1);
+    }
 
     getline(input_stream, line);
     std::vector<double> nucstat_(size, 0.0);
@@ -173,7 +193,14 @@ std::vector<double> open_nucstat(std::string const &file_name, int size) {
     std::istringstream line_stream(line);
     unsigned counter{0};
     while (getline(line_stream, word, sep)) {
-        if (counter >= nbr_col) { nucstat_[counter - nbr_col] = stod(word); }
+        if (counter >= nbr_col) {
+            if (counter - nbr_col >= (unsigned)size) {
+                std::cerr << "error in nucstat file " << file_name << ": row has more than "
+                          << size << " columns\n";
+                exit(1);
+            }
+            nucstat_[counter - nbr_col] = stod(word);
+        }
         counter++;
     }
 
@@ -184,7 +211,7 @@ std::vector<double> open_nucstat(std::string const &file_name, int size) {
     return nucstat_;
 }
 
-std::vector<double> open_nucrelrate(std::string const &file_name, int size) {
+inline std::vector<double> open_nucrelrate(std::string const &file_name, int size) {
     std::ifstream input_stream(file_name);
     if (!input_stream) {
         std::cerr << "nucrelrate file " << file_name << " doesn't exist" << std::endl;
@@ -205,6 +232,11 @@ std::vector<double> open_nucrelrate(std::string const &file_name, int size) {
         }
     }
     nbr_col -= size;
+    if (nbr_col < 0) {
+        std::cerr << "error in nucrelrate file " << file_name << ": header has fewer than "
+                  << size << " columns\n";
+        exit(1);
+    }
 
     getline(input_stream, line);
     std::vector<double> nucrelrate_(size, 0.0);
@@ -212,7 +244,14 @@ std::vector<double> open_nucrelrate(std::string const &file_name, int size) {
     std::istringstream line_stream(line);
     unsigned counter{0};
     while (getline(line_stream, word, sep)) {
-        if (counter >= nbr_col) { nucrelrate_[counter - nbr_col] = stod(word); }
+        if (counter >= nbr_col) {
+            if (counter - nbr_col >= (unsigned)size) {
+                std::cerr << "error in nucrelrate file " << file_name << ": row has more than "
+                          << size << " columns\n";
+                exit(1);
+            }
+            nucrelrate_[counter - nbr_col] = stod(word);
+        }
         counter++;
     }
 
@@ -1612,7 +1651,10 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 ResampleOmegaWeights();
             }
         }
-        CorruptCodonMatrices();
+        // only omega changed here (profiles did not): corrupt per column, which
+        // skips the fitness recompute (CorruptColCodonMatrices uses
+        // SetOmegaNoCorrupt + CorruptMatrixNoFitnessRecomput).
+        for (int j = 0; j < omegaNcat; j++) { componentcodonmatrixbidimarray->CorruptColCodonMatrices(j); }
     }
 
     //! MH move on omega (per component): scaling move
@@ -1738,11 +1780,16 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     }
 
 
-    //! return mean omega
+    //! return mean omega, weighted by the mixture weights (so empty components
+    //! resampled from the prior do not bias the traced value)
     double GetMeanComponentOmega() const {
         double tot = 0;
-        for (int i{0}; i < omegaNcat; i++) { tot += GetComponentOmega(i); }
-        return tot / omegaNcat;
+        double totw = 0;
+        for (int i{0}; i < omegaNcat; i++) {
+            tot += omega_weight->GetVal(i) * GetComponentOmega(i);
+            totw += omega_weight->GetVal(i);
+        }
+        return (totw > 0) ? tot / totw : 0.0;
     }
 
     //! return mean entropy of codon fitness profiles
@@ -1756,17 +1803,19 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             tot += baseprofile_occupancy->GetVal(i) * baseconcentrationarray->GetVal(i);
             totw += baseprofile_occupancy->GetVal(i);
         }
-        return tot / totw;
+        return (totw > 0) ? tot / totw : 0.0;
     }
 
     //! return mean entropy of centers of base distribution
     double GetMeanComponentCodonEntropy() const {
         double tot = 0;
+        double totw = 0;
         for (int i = 0; i < baseNcat; i++) {
             tot +=
                 baseprofile_occupancy->GetVal(i) * Random::GetEntropy(basecenterarray->GetVal(i));
+            totw += baseprofile_occupancy->GetVal(i);
         }
-        return tot / Ncat;
+        return (totw > 0) ? tot / totw : 0.0;
     }
 
     //! return entropy of vector of nucleotide exchange rates
@@ -1816,31 +1865,40 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return mean;
     }
 
-    double GetPredictedRelativedNdS() const {
-        double mean = 0;
+    //! compute the relative dN, dS and dN/dS in a single pass over sites, so the
+    //! three trace stats do not each recompute the full per-site flow.
+    std::tuple<double, double, double> GetPredictedRelativeFlows() const {
+        double totdn = 0, totds = 0;
         for (int i = 0; i < GetNsite(); i++) {
-            mean += GetSiteOmega(i) * sitecodonsubmatrixarray->GetVal(i).GetPredictedRelativeDNDS();
+            double dn = 0, ds = 0;
+            std::tie(dn, ds) = sitecodonsubmatrixarray->GetVal(i).GetRelativeFlowDNDS();
+            // preserve original semantics: dN and dN/dS are scaled by site omega,
+            // dS is not.
+            totdn += GetSiteOmega(i) * dn;
+            totds += ds;
         }
-        mean /= GetNsite();
-        return mean;
+        double dn = totdn / GetNsite();
+        double ds = totds / GetNsite();
+        double dnds = (ds > 0) ? dn / ds : 0.0;
+        return std::make_tuple(dn, ds, dnds);
+    }
+
+    double GetPredictedRelativedNdS() const {
+        double dn = 0, ds = 0, dnds = 0;
+        std::tie(dn, ds, dnds) = GetPredictedRelativeFlows();
+        return dnds;
     }
 
     double GetPredictedRelativedN() const {
-        double mean = 0;
-        for (int i = 0; i < GetNsite(); i++) {
-            mean += GetSiteOmega(i) * sitecodonsubmatrixarray->GetVal(i).GetPredictedRelativeDN();
-        }
-        mean /= GetNsite();
-        return mean;
+        double dn = 0, ds = 0, dnds = 0;
+        std::tie(dn, ds, dnds) = GetPredictedRelativeFlows();
+        return dn;
     }
 
     double GetPredictedRelativedS() const {
-        double mean = 0;
-        for (int i = 0; i < GetNsite(); i++) {
-            mean += sitecodonsubmatrixarray->GetVal(i).GetPredictedRelativeDS();
-        }
-        mean /= GetNsite();
-        return mean;
+        double dn = 0, ds = 0, dnds = 0;
+        std::tie(dn, ds, dnds) = GetPredictedRelativeFlows();
+        return ds;
     }
     const Tree &GetTree() const { return *tree; }
     const int GetNcat() const { return Ncat; }

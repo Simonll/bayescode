@@ -27,6 +27,10 @@ inline double FixationFactor(double deltaS) {
     return deltaS / -std::expm1(-deltaS);
 }
 
+//! floor added to codon fitnesses to avoid log(0) on (near-)zero fitnesses.
+//! Shared by the matrix and the reader so the two agree on the fitness values.
+constexpr double kFitnessFloor = 1e-8;
+
 class CodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
                                        public virtual OmegaCodonSubMatrix {
   public:
@@ -41,14 +45,16 @@ class CodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
           NucCodonSubMatrix(instatespace, inNucMatrix, innormalise),
           OmegaCodonSubMatrix(instatespace, inomega, innormalise),
           fitnesses(incodon.size(), 0.0),
-          logfitnesses(incodon.size(), 1.0 / incodon.size()),
-          codon(incodon) {}
+          logfitnesses(incodon.size(), 0.0),
+          codon(incodon) {
+        RecomputeFitness();
+    }
 
     //! \brief access by copy to fitness of a given codon
     //!
     //! Note: to avoid numerical errors, this function adds 1e-8.
     double GetFitness(int c) const {
-        assert(std::abs((exp(log(codon[c])) + 1e-8) - fitnesses[c]) < 1e-6);
+        assert(std::abs((codon[c] + kFitnessFloor) - fitnesses[c]) < 1e-6);
         return fitnesses[c];
     }
 
@@ -71,16 +77,21 @@ class CodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
     void CorruptMatrixNoFitnessRecomput() { SubMatrix::CorruptMatrix(); }
 
     void CorruptMatrix() override {
-        for (size_t c{0}; c < codon.size(); c++) {
-            fitnesses[c] = exp(log(codon[c])) + 1e-8;
-            logfitnesses[c] = log(fitnesses[c]);
-        }
+        RecomputeFitness();
         SubMatrix::CorruptMatrix();
     }
 
   protected:
     void ComputeArray(int i) const override;
     void ComputeStationary() const override;
+
+    //! recompute fitnesses and log-fitnesses from the codon vector (with floor)
+    void RecomputeFitness() {
+        for (size_t c{0}; c < codon.size(); c++) {
+            fitnesses[c] = codon[c] + kFitnessFloor;
+            logfitnesses[c] = log(fitnesses[c]);
+        }
+    }
     // fitness precomputation
     std::vector<double> fitnesses;
     std::vector<double> logfitnesses;
