@@ -53,8 +53,7 @@ class CodonMutselArgParse : public BaseArgParse {
         "`freeomega` is overridden to false and `omegancat` equals to the number of ω in the file.",
         false, "Null", "string", cmd};
 
-    //! - omegamode: omega fixed (3), shared across genes (2) or estimated with
-    //! shrinkage across genes (1) or without shrinkage (0)
+    //! - omegamode: omega fixed (3) or estimated without shrinkage (0)
     int omegamode() {
         if (freeomega.getValue()) {
             return 0;

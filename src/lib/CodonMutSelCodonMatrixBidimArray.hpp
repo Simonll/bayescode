@@ -91,7 +91,8 @@ class CodonMutSelCodonMatrixBidimArray : public BidimArray<SubMatrix>,
         }
     }
 
-    //! update only those matrices for which occupancy[i] != 0
+    //! update only the matrices of empty rows (occupancy[i] == 0), e.g. after
+    //! resampling empty components from the prior
     void CorruptCodonMatricesRowOccupancy(const Selector<int> &row_occupancy) {
         for (int i = 0; i < GetNrow(); i++) {
             if (!row_occupancy.GetVal(i)) { CorruptRowCodonMatrices(i); }

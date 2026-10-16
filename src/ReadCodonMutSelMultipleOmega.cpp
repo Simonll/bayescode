@@ -206,10 +206,10 @@ int main(int argc, char *argv[]) {
         }
         os.close();
     } else if (read_args.selection_coef_distribution.getValue()) {
-        int Ncat = 241;
-        double min = -30;
-        double max = 30;
-        double bin = 0.25;
+        const double smin = -30;
+        const double smax = 30;
+        const double sbin = 0.25;
+        const int Ncat = static_cast<int>((smax - smin) / sbin) + 1;
         vector<double> ghistoMut(Ncat, 0.0);
         vector<double> ghistoSub(Ncat, 0.0);
         vector<double> ghistoNonsynMut(Ncat, 0.0);
@@ -281,8 +281,7 @@ int main(int argc, char *argv[]) {
                         if (!model.GetCodonStateSpace()->Synonymous(codonFrom, codonTo)) {
                             statSubRate *= model.GetSiteOmega(site);
                         }
-                        int c = std::max(0, std::min(Ncat - 1, static_cast<int>(std::floor((deltaS - min) / bin))));
-                        // int c = std::clamp(static_cast<int>(std::floor((deltaS - min) / bin)), 0, Ncat - 1);
+                        int c = std::max(0, std::min(Ncat - 1, static_cast<int>(std::floor((deltaS - smin) / sbin))));
 
                         if (!model.GetCodonStateSpace()->Synonymous(codonFrom, codonTo)) {
                             shistoNonsynMut[c] += statMutRate;
@@ -319,12 +318,12 @@ int main(int argc, char *argv[]) {
         ofstream synmutsubsel_os(chain_name + ".synsubsel", std::ios::out);
 
         for (int c = 0; c < Ncat; c++) {
-            mutmutsel_os << (min + (c * bin)) << "\t" << (ghistoMut[c] / size) << '\n';
-            mutsubsel_os << (min + (c * bin)) << "\t" << (ghistoSub[c] / size) << '\n';
-            nonsynmutmutsel_os << (min + (c * bin)) << "\t" << (ghistoNonsynMut[c] / size) << '\n';
-            nonsynmutsubsel_os << (min + (c * bin)) << "\t" << (ghistoNonsynSub[c] / size) << '\n';
-            synmutmutsel_os << (min + (c * bin)) << "\t" << (ghistoSynMut[c] / size) << '\n';
-            synmutsubsel_os << (min + (c * bin)) << "\t" << (ghistoSynSub[c] / size) << '\n';
+            mutmutsel_os << (smin + (c * sbin)) << "\t" << (ghistoMut[c] / size) << '\n';
+            mutsubsel_os << (smin + (c * sbin)) << "\t" << (ghistoSub[c] / size) << '\n';
+            nonsynmutmutsel_os << (smin + (c * sbin)) << "\t" << (ghistoNonsynMut[c] / size) << '\n';
+            nonsynmutsubsel_os << (smin + (c * sbin)) << "\t" << (ghistoNonsynSub[c] / size) << '\n';
+            synmutmutsel_os << (smin + (c * sbin)) << "\t" << (ghistoSynMut[c] / size) << '\n';
+            synmutsubsel_os << (smin + (c * sbin)) << "\t" << (ghistoSynSub[c] / size) << '\n';
         }
     } else {
         vector<double> omegappgto(model.GetNsite(), 0);

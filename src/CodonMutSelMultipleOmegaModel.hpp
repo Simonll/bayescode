@@ -362,19 +362,19 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     PathSuffStatArray *sitepathsuffstatarray;
 
-    // 0: free wo shrinkage
-    // 1: free with shrinkage
+    // 0: free without shrinkage
     // 2: shared across genes
     // 3: fixed
+    // (modes 1 and 2 are not implemented for this model)
 
-    // currently: free wo shrinkage
+    // currently: free without shrinkage
     int blmode;
-    // currently, free wo shrinkages
+    // currently: free without shrinkage
     int nucmode;
-    // currently, free wo shrinkage
+    // currently: free without shrinkage
     int basemode;
 
-    // currently: free wo shrinkage or fixed (1 or 3)
+    // currently: free without shrinkage (0) or fixed (3)
     int omegamode;
 
     bool flatfitness;
@@ -473,7 +473,10 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
         if (Ncat == -1) { Ncat = Nsite; }
         if (Ncat > Nsite) { Ncat = Nsite; }
-        if (Ncat > 100) { Ncat = 100; }
+        if (Ncat > 100) {
+            std::cerr << "warning: ncat capped at 100 (requested " << Ncat << ")\n";
+            Ncat = 100;
+        }
 
         basemin = 0;
         if (baseNcat < 0) {
@@ -841,21 +844,6 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     //! return current omega value for omega mixture of site
     double GetSiteOmega(int site) const { return GetComponentOmega(omega_alloc->GetVal(site)); }
 
-    double GetSiteOmegaMean() const {
-        double mean = 0.0;
-        
-        if (omegaNcat == 1) { 
-            mean = GetComponentOmega(0);
-            return mean;
-        } else {
-            for (int site = 0; site < Nsite; site++) {
-                mean += GetSiteOmega(site);
-            }
-            return mean / Nsite;
-        }
-    }
-
-
     //! \brief tell the nucleotide matrix that its parameters have changed and
     //! that it should be updated
     void UpdateNucMatrix() {
@@ -1199,60 +1187,20 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     //! MH move on nucleotide rate parameters
 
     void MoveNucStat() {
-        Move::Profile(nucstat, 0.5, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.4, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.3, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.2, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.1, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.05, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.04, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.03, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.02, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucstat, 0.01, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        for (double tuning : {0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.04, 0.03, 0.02, 0.01}) {
+            Move::Profile(nucstat, tuning, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+                &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        }
     }
 
     //! MH move on nucleotide rate parameters
     void MoveNucRates() {
-        Move::Profile(nucrelrate, 0.5, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.4, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.3, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.2, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.1, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.05, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.04, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.03, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.02, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.01, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.05, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.04, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.03, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.02, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
-        Move::Profile(nucrelrate, 0.01, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
-            &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        for (double tuning : {0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.04, 0.03, 0.02, 0.01}) {
+            Move::Profile(nucrelrate, tuning, 2, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+                &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+            Move::Profile(nucrelrate, tuning, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
+                &CodonMutSelMultipleOmegaModel::UpdateMatrices, this);
+        }
     }
 
 
@@ -1263,7 +1211,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 MoveCodonProfiles();
                 ResampleEmptyProfileComponents();
             }
-            if (!clamp_profiles_allocation && Ncat > 1) {
+            if (!clamp_profiles_allocation) {
                 ResampleProfileAlloc();
                 ProfileLabelSwitchingMove();
                 ResampleProfileWeights();
@@ -1823,14 +1771,6 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     //! return entropy of vector of equilibrium nucleotide composition
     double GetNucStatEntropy() const { return Random::GetEntropy(nucstat); }
-
-    //! return predicted omega induced by the mutation-selection balance
-    double GetPredictedOmegaKnot() const {
-        double mean = 0;
-        for (int i = 0; i < GetNsite(); i++) { mean += GetPredictedSiteOmegaKnot(i); }
-        mean /= GetNsite();
-        return mean;
-    }
 
     //! return predicted omega at a given site induced by the mutation-selection balance
     double GetPredictedSiteOmegaKnot(int site) const {
