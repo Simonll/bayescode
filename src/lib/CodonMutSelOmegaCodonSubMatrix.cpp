@@ -26,15 +26,7 @@ void CodonMutSelOmegaCodonSubMatrix::ComputeArray(int i) const {
         Q(i, j) = (*NucMatrix)(a, b);
 
         double deltaS = GetLogFitness(j) - GetLogFitness(i);
-        if ((fabs(deltaS)) < 1e-30) {
-            Q(i, j) *= 1 + deltaS / 2;
-        } else if (deltaS > 50) {
-            Q(i, j) *= deltaS;
-        } else if (deltaS < -50) {
-            Q(i, j) = 0;
-        } else {
-            Q(i, j) *= deltaS / (1.0 - exp(-deltaS));
-        }
+        Q(i, j) *= FixationFactor(deltaS);
 
         if (!Synonymous(i, j)) { Q(i, j) *= GetOmega(); }
 
@@ -62,17 +54,7 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetFlowDNDS() const {
 
             double nucrate = (*NucMatrix)(a, b);
             double deltaS = GetLogFitness(j) - GetLogFitness(i);
-            double pfix;
-            
-            if ((fabs(deltaS)) < 1e-30) {
-                pfix = 1 + deltaS / 2;
-            } else if (deltaS > 50) {
-                pfix = deltaS;
-            } else if (deltaS < -50) {
-                pfix = 0;
-            } else {
-                pfix = deltaS / (1.0 - exp(-deltaS));
-            }
+            double pfix = FixationFactor(deltaS);
             if (!Synonymous(i, j)) {
             
                 dn += nucrate * pfix;
@@ -128,17 +110,7 @@ std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetRelativeFlowDNDS()
 
             double nucrate = (*NucMatrix)(a, b);
             double deltaS = GetLogFitness(j) - GetLogFitness(i);
-            double pfix;
-            
-            if ((fabs(deltaS)) < 1e-30) {
-                pfix = 1 + deltaS / 2;
-            } else if (deltaS > 50) {
-                pfix = deltaS;
-            } else if (deltaS < -50) {
-                pfix = 0;
-            } else {
-                pfix = deltaS / (1.0 - exp(-deltaS));
-            }
+            double pfix = FixationFactor(deltaS);
             if (!Synonymous(i, j)) {
 
                 mutdn += nucrate;

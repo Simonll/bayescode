@@ -51,7 +51,7 @@ class CodonMutSelCodonMatrixBidimArray : public BidimArray<SubMatrix>,
         for (int i = 0; i < GetNrow(); i++) {
             for (int j = 0; j < GetNcol(); j++) {
                 matrixarray[i][j] = new CodonMutSelOmegaCodonSubMatrix(
-                    codonstatespace, nucmatrix, fitnessarray->GetVal(i), GetOmega(j), 1.0);
+                    codonstatespace, nucmatrix, fitnessarray->GetVal(i), GetOmega(j), false);
             }
         }
     }

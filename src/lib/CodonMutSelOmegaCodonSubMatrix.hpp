@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <cmath>
 #include "CodonSubMatrix.hpp"
 
 /**
@@ -15,6 +16,16 @@
  * omega be different from 1 was explored in Rodrigue and Lartillot, 2017, MBE (detecting deviations
  * from expected non-syn rate under the standard mut-sel model).
  */
+
+//! fixation probability factor for a fitness difference deltaS (in log space).
+//! Shared by ComputeArray, GetFlowDNDS, GetRelativeFlowDNDS and the reader, so a
+//! change to the biology is applied in one place only.
+inline double FixationFactor(double deltaS) {
+    if (std::fabs(deltaS) < 1e-8) { return 1 + deltaS / 2; }
+    if (deltaS > 50) { return deltaS; }
+    if (deltaS < -50) { return 0; }
+    return deltaS / -std::expm1(-deltaS);
+}
 
 class CodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
                                        public virtual OmegaCodonSubMatrix {

@@ -583,10 +583,24 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         omega_occupancy = new OccupancySuffStat(omegaNcat);
 
         // omega (fixed to 1 by default)
+        if (omegaNcat < 1) {
+            std::cerr << "error: omegancat must be >= 1\n";
+            exit(1);
+        }
+        if (omega_shift < 0) {
+            std::cerr << "error: omegashift must be >= 0\n";
+            exit(1);
+        }
         delta_omegahypermean = 1.0;
         delta_omegahyperinvshape = 1.0;
         delta_omega_array = new IIDGamma(omegaNcat, delta_omegahypermean, delta_omegahyperinvshape);
-        if (omegamode == 3 and omegaNcat == 1) { (*delta_omega_array)[0] = 1.0; }
+        if (omegamode == 3 and !loaded_delta_omega_array) {
+            // omega fixed: pin all components to 1.0 (not just the first), so a
+            // finite mixture with omegancat>1 does not run with frozen random draws.
+            for (int omegacat = 0; omegacat < omegaNcat; omegacat++) {
+                (*delta_omega_array)[omegacat] = 1.0;
+            }
+        }
         if (loaded_delta_omega_array) {
             for (int omegacat = 0; omegacat < omegaNcat; omegacat++) {
                 (*delta_omega_array)[omegacat] = opened_delta_omega_array[omegacat];
@@ -1077,7 +1091,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 }
             }
            
-            if (!clamp_profiles) {
+            if (!clamp_profiles || !clamp_profiles_allocation) {
                 profilechrono.Start();
                 MoveCodonMixture(3);
                 profilechrono.Stop();
@@ -1810,6 +1824,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     void GetModelStamp(std::ostream &os) const {
         os << GetModelName() << '\t';
         os << datafile << '\t' << treefile << '\t' << profilesfile << '\t';
+        os << nucstatfile << '\t' << nucrelratefile << '\t';
         os << delta_omega_array_file << '\t';
         os << omegaNcat << '\t';
         os << omega_shift << '\t';
@@ -1835,6 +1850,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             exit(1);
         }
         is >> datafile >> treefile >> profilesfile;
+        is >> nucstatfile >> nucrelratefile;
         is >> delta_omega_array_file;
         is >> omegaNcat;
         is >> omega_shift;

@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
                 
             }
             for (int i = 0; i < model.GetOmegaNcat(); i++) {
-                os << model.GetOmega(i) << (i == model.GetOmegaNcat() - 1 ? '\n' : '\t');
+                os << model.GetComponentOmega(i) << (i == model.GetOmegaNcat() - 1 ? '\n' : '\t');
             }
             for (int i = 0; i < model.GetNsite(); i++) {
                 os << model.GetOmegaAlloc(i) << (i == model.GetNsite() - 1 ? '\n' : '\t');
@@ -267,14 +267,12 @@ int main(int argc, char *argv[]) {
                         statMutRate =
                             model.GetNucRR(nucRRIndex) * model.GetNucStat(nucTo) * stat[codonFrom];
                         
-                        deltaS = log(model.GetSiteCodonFitness(site, codonTo)) -
-                                 log(model.GetSiteCodonFitness(site, codonFrom));
+                        // log-fitness with the same +1e-8 floor as the substitution matrix,
+                        // so the selection coefficients match the matrix they describe.
+                        deltaS = log(model.GetSiteCodonFitness(site, codonTo) + 1e-8) -
+                                 log(model.GetSiteCodonFitness(site, codonFrom) + 1e-8);
 
-                        if ((fabs(deltaS)) < 1e-30) {
-                            statSubRate = statMutRate / (1.0 - deltaS / 2.0);
-                        } else {
-                            statSubRate = statMutRate * (deltaS / (1.0 - exp(-deltaS)));
-                        }
+                        statSubRate = statMutRate * FixationFactor(deltaS);
 
                         if (!model.GetCodonStateSpace()->Synonymous(codonFrom, codonTo)) {
                             statSubRate *= model.GetSiteOmega(site);
