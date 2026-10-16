@@ -168,7 +168,8 @@ int main(int argc, char *argv[]) {
     } else if (read_args.prepare_files_for_simulation.getValue()) {
         string filename{chain_name + ".pvalues"};
         std::ofstream os(filename);
-        model.GetModelStamp(os);
+        // 13-token stamp compatible with LikelihoodFreePhylogenetics
+        model.GetPvaluesStamp(os);
         os << '\n';
         for (int step = 0; step < size; step++) {
             cerr << '.';

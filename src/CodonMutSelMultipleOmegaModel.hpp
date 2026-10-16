@@ -1870,6 +1870,24 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         os << nucstatfile << '\t' << nucrelratefile << '\t';
     }
 
+    //! stamp with exactly 13 tokens, the format read by
+    //! LikelihoodFreePhylogenetics' readBayescodeParametersMutSelC (Ncat at
+    //! index 8). Used for --for_simulation .pvalues output. The full stamp
+    //! (with nucstatfile/nucrelratefile appended) is written to .param for resume.
+    void GetPvaluesStamp(std::ostream &os) const {
+        os << GetModelName() << '\t';
+        os << datafile << '\t' << treefile << '\t' << profilesfile << '\t';
+        os << delta_omega_array_file << '\t';
+        os << omegaNcat << '\t';
+        os << omega_shift << '\t';
+        os << baseNcat << '\t';
+        os << Ncat << '\t';
+        os << omegamode << '\t';
+        os << flatfitness << '\t';
+        os << flatnucstat << '\t';
+        os << flatnucrelrate << '\t';
+    }
+
     void ToStream(std::ostream &os) const {
         GetModelStamp(os);
         tracer->write_line(os);
