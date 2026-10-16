@@ -175,7 +175,7 @@ else()
     target_link_libraries(mpi_par_test ${MPI_LIBRARIES})
 
     add_executable(all_tests "src/all_tests.cpp")
-    target_link_libraries(all_tests ${MPI_LIBRARIES})
+    target_link_libraries(all_tests bayescode_lib ${MPI_LIBRARIES})
 endif(TINY)
 
 unset(TINY CACHE)
