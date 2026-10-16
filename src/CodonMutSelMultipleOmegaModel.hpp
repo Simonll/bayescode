@@ -385,7 +385,40 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         Update();
     }
 
-    ~CodonMutSelMultipleOmegaModel() override = default;
+    ~CodonMutSelMultipleOmegaModel() override {
+        // delete in reverse order of creation in init(); member destructors do not
+        // delete their cross-references, so this order is safe.
+        delete componentomegapathsuffstatarray;
+        delete siteomegapathsuffstatarray;
+        delete sitepathsuffstatarray;
+        delete phyloprocess;
+        delete sitecodonsubmatrixarray;
+        delete sitesubmatrixarray;
+        delete componentcodonmatrixbidimarray;
+        delete sitecodonfitnessarray;
+        delete omega_alloc;
+        delete omega_weight;
+        delete delta_omega_array;
+        delete omega_occupancy;
+        delete profile_occupancy;
+        delete profile_alloc;
+        delete weight;
+        delete componentcodonfitnessarray;
+        delete componentconcentrationarray;
+        delete componentcenterarray;
+        delete componentalloc;
+        delete basesuffstatarray;
+        delete baseconcentrationarray;
+        delete basecenterarray;
+        delete baseprofile_occupancy;
+        delete baseweight;
+        delete nucmatrix;
+        delete lengthpathsuffstatarray;
+        delete branchlength;
+        delete blhypermeanarray;
+        delete codondata;
+        delete data;
+    }
 
     void init() {
         blmode = 0;

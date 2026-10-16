@@ -88,6 +88,8 @@ class OmegaCodonSubMatrix : public virtual CodonSubMatrix {
         omega = inomega;
         CorruptMatrix();
     }
+    //! set omega without corrupting the matrix (caller decides when to recompute)
+    void SetOmegaNoCorrupt(double inomega) { omega = inomega; }
 
   protected:
     double omega;

@@ -29,6 +29,12 @@ class CodonMutSelCodonMatrixBidimArray : public BidimArray<SubMatrix>,
 
     ~CodonMutSelCodonMatrixBidimArray() { Delete(); }
 
+    //! owns raw pointers: copying or moving would double-delete
+    CodonMutSelCodonMatrixBidimArray(const CodonMutSelCodonMatrixBidimArray &) = delete;
+    CodonMutSelCodonMatrixBidimArray &operator=(const CodonMutSelCodonMatrixBidimArray &) = delete;
+    CodonMutSelCodonMatrixBidimArray(CodonMutSelCodonMatrixBidimArray &&) = delete;
+    CodonMutSelCodonMatrixBidimArray &operator=(CodonMutSelCodonMatrixBidimArray &&) = delete;
+
     //! return the number of rows (number of fitness Ncat)
     virtual int GetNrow() const override { return fitnessarray->GetSize(); }
     //! return the number of columns (number of omega Ncat)
@@ -71,16 +77,17 @@ class CodonMutSelCodonMatrixBidimArray : public BidimArray<SubMatrix>,
     //! update all matrices for row i
     void CorruptRowCodonMatrices(int i) {
         for (int j = 0; j < GetNcol(); j++) {
+            // SetOmega already corrupts (recomputes fitness); no second call needed
             matrixarray[i][j]->SetOmega(GetOmega(j));
-            matrixarray[i][j]->CorruptMatrix();
         }
     }
 
     //! update all matrices for col j
     void CorruptColCodonMatrices(int j) {
         for (int i = 0; i < GetNrow(); i++) {
-            matrixarray[i][j]->SetOmega(GetOmega(j));
-            matrixarray[i][j]->CorruptMatrix();
+            // omega changed only: set without corrupting, then recompute without fitness
+            matrixarray[i][j]->SetOmegaNoCorrupt(GetOmega(j));
+            matrixarray[i][j]->CorruptMatrixNoFitnessRecomput();
         }
     }
 
