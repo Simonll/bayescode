@@ -1855,7 +1855,6 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     void GetModelStamp(std::ostream &os) const {
         os << GetModelName() << '\t';
         os << datafile << '\t' << treefile << '\t' << profilesfile << '\t';
-        os << nucstatfile << '\t' << nucrelratefile << '\t';
         os << delta_omega_array_file << '\t';
         os << omegaNcat << '\t';
         os << omega_shift << '\t';
@@ -1865,6 +1864,10 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         os << flatfitness << '\t';
         os << flatnucstat << '\t';
         os << flatnucrelrate << '\t';
+        // nucstatfile/nucrelratefile are appended at the END so the first 13
+        // tokens (read by LikelihoodFreePhylogenetics' readBayescodeParametersMutSelC)
+        // keep their original positions.
+        os << nucstatfile << '\t' << nucrelratefile << '\t';
     }
 
     void ToStream(std::ostream &os) const {
@@ -1881,7 +1884,6 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             exit(1);
         }
         is >> datafile >> treefile >> profilesfile;
-        is >> nucstatfile >> nucrelratefile;
         is >> delta_omega_array_file;
         is >> omegaNcat;
         is >> omega_shift;
@@ -1891,6 +1893,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         is >> flatfitness;
         is >> flatnucstat;
         is >> flatnucrelrate;
+        is >> nucstatfile >> nucrelratefile;
         init();
         tracer->read_line(is);
         Update();
