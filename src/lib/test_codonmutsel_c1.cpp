@@ -5,8 +5,9 @@
 #include "GTRSubMatrix.hpp"
 
 // Regression test for C1: the bidim array must build its codon matrices with
-// normalise=false, so omega scales the overall substitution rate instead of
-// cancelling out of it (and contaminating synonymous rates).
+// normalise=true AND a GetRate() that returns the nucleotide mutation scale
+// (independent of omega), so omega scales the overall substitution rate instead
+// of cancelling out of it (and contaminating synonymous rates).
 //
 // With a GC-favoring fitness profile, doubling omega must raise the total rate
 // by a factor strictly greater than 1 (only the non-synonymous part doubles),
@@ -58,7 +59,10 @@ TEST_CASE("CodonMutSelCodonMatrixBidimArray: omega scales the total rate") {
     double ratio = t2 / t1;
 
     // omega must scale the rate: ratio strictly > 1 (here ~1.72 with this profile).
-    // If normalise=true were used, omega would cancel and ratio would be ~1.0.
+    // With normalise=true AND a GetRate() that returns the nucleotide mutation
+    // scale (independent of omega), omega still scales the rate — the constant
+    // normalisation factor cancels in the ratio. Only a normalisation by the
+    // codon matrix's own flux (which depends on omega) would cancel it.
     CHECK(ratio > 1.1);
     CHECK(ratio < 2.5);
 
