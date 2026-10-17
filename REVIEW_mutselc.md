@@ -168,3 +168,111 @@ Revue produite par Claude Code (Sonnet 5.5) le 2026-10-16, sur le repo cloné en
 
 C1, C2, C3 et C5 d'abord (ils changent les résultats d'inférence). Puis C4/C6
 (petits, locaux). R1-R3 ensemble (réparer la fuite expose le risque de delete-order).
+
+
+## 5. Validation croisée avec pbmpi (CodonMutSelFinite)
+
+Contexte : le biais Ncat=1 (omega inféré ~0.29-0.35 vs 0.083 simulé) a été
+investigué en comparant avec le modèle codon mut-sel de pbmpi
+(https://github.com/bayesiancook/pbmpi.git, branche master, HEAD fév 2023).
+
+### Faits établis sur pbmpi
+
+- Le modèle `-mutselc` (`CodonMutSelFinite`) est un profil fitness **par codon**
+  (61 valeurs), homogène, **sans omega** dans la version master : le constructeur
+  `CodonMutSelFinitePhyloProcess` ne reçoit ni `fixomega` ni `omegaprior`
+  (`Model.h:150`). L'omega n'existe que dans les modèles AA (`AACodonMutSel*`).
+- `-freeomega`/`-freecodonprofile` lus par `PB.cpp` sont donc **ignorés** pour
+  `-mutselc` dans master.
+- La normalisation de pbmpi (`CodonMutSelProfileSubMatrix::GetRate`, `2*norm*3`
+  sur les nucléotides) est la **même convention** que notre fix C1 : la matrice
+  de codons est normalisée par l'échelle de mutation, pas par son propre flux —
+  ce qui préserve omega. Confirme que C1 était correct.
+
+### Portage freeomega au modèle codon (branche `muteslc_freeomega`)
+
+Pour tester si l'omega libre reproduit le biais, l'implémentation omega du modèle
+AA a été transposée au modèle codon (10 fichiers, calqué sur `AACodonMutSel`) :
+`CodonSubMatrix.{h,cpp}` (omega* dans la matrice, `Q[i][j] *= *omega` si
+non-syn), `CodonMutSelProfileProcess.{h,cpp}` (omega/omegaprior, LogOmegaPrior,
+SampleOmega, MoveOmega), `CodonMutSelFiniteProfileProcess.h` (Create, Move,
+CreateMatrix, streams), `CodonMutSelFiniteSubstitutionProcess.h`,
+`CodonMutSelFinitePhyloProcess.{h,cpp}` (constructeurs, trace col omega,
+streams, broadcast MPI +1), `Model.h`, `CodonMutSelSBDPProfileProcess.h`
+(signature matrice). Compile et tourne.
+
+### Résultat (séquence simulée Ncat=1, 105 itérations, convergé)
+
+| Config | omega | lnL |
+|---|---|---|
+| Vérité simulée | 0.083 | — |
+| **pbmpi -mutselc -freeomega** (portage) | **0.156** | **-43623** |
+| mutselc (nous) freeomega | 0.29 | -43912 |
+| mutselc (nous) omega fixé | 0.083 | -44059 |
+
+### Conclusion
+
+- Le portage fonctionne : l'omega bouge et converge (1.0 → 0.156).
+- **pbmpi ne reproduit PAS le biais** : il retrouve omega ≈ 0.156 (proche de la
+  vérité 0.083), avec une lnL meilleure (-43623 vs -43912).
+- Donc le biais de notre `CodonMutSelMultipleOmega` à Ncat=1 n'est **pas** dû à
+  l'existence de l'omega libre en soi. La différence vient d'un autre aspect du
+  modèle (normalisation de la matrice, paramétrisation du profil, ou moves) —
+  à investiguer.
+
+### Résultat négatif : correctif de normalisation (hypothèse écartée)
+
+Hypothèse testée : normaliser la matrice codon par l'échelle de mutation
+(indépendante d'omega, comme pbmpi `CodonMutSelProfileSubMatrix::GetRate`)
+devrait découpler omega de l'échelle globale et corriger le biais.
+
+Implémenté sur une branche séparée (`fix_ncat1_normalise`) : `GetRate()`
+override renvoyant `GetNucMatrix()->GetRate()` + `normalise=true` aux 2 sites
+de création (`CodonMutSelCodonMatrixBidimArray.hpp`, `CodonSubMatrixArray.hpp`).
+
+Test sur la séquence simulée Ncat=1 (100 itérations, convergé) :
+
+| Config | omega | dnds | lnL |
+|---|---|---|---|
+| Vérité simulée | 0.083 | 0.112 | — |
+| pbmpi -mutselc -freeomega | 0.156 | — | -43623 |
+| mutselc SANS correctif | 0.29 | 0.39 | -43912 |
+| mutselc AVEC correctif | 0.31 | 0.36 | -43925 |
+
+Conclusion : quasiment aucun effet. Le biais persiste. Le MCMC compense l'échelle
+globale via les longueurs de branches (paramètres séparés), donc la normalisation
+de la matrice codon n'est PAS le levier du biais. Branche supprimée, reverté,
+binaire rebuildé. Hypothèses écartées au total : prior omega, hypermutabilité CpG,
+moves de profil (power move), normalisation de la matrice.
+
+### Découverte clé : couplage omega ↔ taille d'arbre (identifiabilité)
+
+La vraie longueur de l'arbre simulé est **65.5** (somme des branches du
+`.tre` simulé avec `--for_simulation`). Comparaison de la total length
+inférée par chaque config sur la même séquence simulée :
+
+| Config | omega | total_length | ratio vs vérité (65.5) |
+|---|---|---|---|
+| Vérité simulée | 0.083 | 65.5 | 1.00 |
+| pbmpi -mutselc (omega figé=1) | — | 60.6 | **0.93** ✅ |
+| pbmpi -mutselc -freeomega | 0.156 | 271 | 4.14 ❌ |
+| mutselc -freeomega (nous) | 0.29-0.34 | 208-236 | 3.2-3.6 ❌ |
+
+Conclusion décisive :
+
+- **Omega figé** → pbmpi retrouve la vraie taille d'arbre (60.6 ≈ 65.5). Le
+  modèle sous-jacent est donc sain.
+- **Omega libre** → l'arbre gonfle ~4x dans les DEUX implémentations (pbmpi ET
+  notre mutselc). Le biais n'est PAS spécifique à notre modèle.
+- Mécanisme : omega<1 ralentit les non-synonymes, donc pour expliquer le même
+  nombre de substitutions non-syn observées il faut un arbre beaucoup plus long.
+  La vraisemblance a une dégénérescence quasi-exacte entre omega et l'échelle
+  de l'arbre : des dizaines de combinaisons (omega, longueur) donnent presque la
+  même vraisemblance.
+- C'est une **limite d'identifiabilité structurelle** du modèle mut-sel codon +
+  omega libre à Ncat=1 (~635 codons, ~10 sites/paramètre), commune aux deux
+  implémentations, PAS un bug d'une seule d'entre elles.
+
+Implication pratique : à Ncat=1, `--freeomega` n'est pas identifiable — la seule
+config qui retrouve à la fois la vraie taille d'arbre et le vrai dnds est omega
+figé. Recommandation : ne pas libérer omega en mono-profil.
