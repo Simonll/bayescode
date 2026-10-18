@@ -839,7 +839,12 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
 
     double GetSiteCodonFitness(int site, int i) {
-        return sitecodonfitnessarray->GetVal(profile_alloc->GetVal(site))[i];
+        // sitecodonfitnessarray is a MixtureSelector that already applies
+        // profile_alloc in GetVal(site); do NOT index it again with
+        // profile_alloc->GetVal(site) (that double-applies the allocation and
+        // returns the wrong profile whenever Ncat>1 and the site is not in
+        // profile 0).
+        return sitecodonfitnessarray->GetVal(site)[i];
     }
     //! return current omega value for omega mixture of site
     double GetSiteOmega(int site) const { return GetComponentOmega(omega_alloc->GetVal(site)); }

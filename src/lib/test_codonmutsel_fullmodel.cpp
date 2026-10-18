@@ -158,3 +158,69 @@ TEST_CASE("CodonMutSelMultipleOmegaModel: omega-pinned mode keeps delta-omega = 
 
     cleanup_toy_dataset();
 }
+
+// ---------------------------------------------------------------------------
+// Regression test for B2: GetSiteCodonFitness must return the fitness of the
+// profile the site is allocated to. sitecodonfitnessarray is already a
+// MixtureSelector that applies profile_alloc in GetVal(site), so indexing it
+// again with profile_alloc->GetVal(site) double-applies the allocation and
+// returns the wrong profile whenever Ncat>1 and the site is not in profile 0.
+// ---------------------------------------------------------------------------
+TEST_CASE("CodonMutSelMultipleOmegaModel: GetSiteCodonFitness uses the site profile (B2)") {
+    write_toy_dataset();
+
+    // Two distinct fitness profiles (each sums to 1). Profile A peaks on codon
+    // 0, profile B peaks on codon 1, so they are clearly different.
+    auto make_profile = [](int peak) {
+        std::vector<double> v(61, 0.0);
+        for (int c = 0; c < 61; c++) { v[c] = 1.0 / 61.0; }
+        v[peak] = 0.5;
+        double s = 0; for (auto &x : v) s += x;
+        for (auto &x : v) x /= s;
+        return v;
+    };
+    std::vector<double> profA = make_profile(0);
+    std::vector<double> profB = make_profile(1);
+
+    // profiles file: header line, then one line per site (12 sites). The first
+    // 6 sites use profile A, the last 6 use profile B, so alloc =
+    // [0,0,0,0,0,0,1,1,1,1,1,1]. This is NOT an involution (profile_alloc[1]=0),
+    // so a double application of the allocation (the B2 bug) is detectable:
+    // for site 6, profile_alloc[profile_alloc[6]] = profile_alloc[1] = 0 != 1.
+    std::string tmp_prof = "mutselc_test_profiles.txt";
+    {
+        std::ofstream out(tmp_prof);
+        for (int c = 0; c < 61; c++) { out << "1 "; }
+        out << "\n";
+        for (int site = 0; site < 12; site++) {
+            const auto &p = (site < 6) ? profA : profB;
+            for (int c = 0; c < 61; c++) { out << p[c] << " "; }
+            out << "\n";
+        }
+    }
+
+    // Ncat is set from the number of distinct profiles in the file (2).
+    CodonMutSelMultipleOmegaModel model(
+        tmp_ali, tmp_tree, tmp_prof, "Null", "Null",
+        0, 1, 1, 1,   // omegamode=0, Ncat=1 (overridden by file), baseNcat=1, omegaNcat=1
+        0.0,          // omegashift
+        false,        // flatfitness=false (we provide profiles)
+        "Null", true, true);
+
+    // The file has 12 lines = Nsite, so allocations are fixed (loaded_profiles_allocation).
+    // Verify the invariant: GetSiteCodonFitness(site,c) must equal the fitness of
+    // the profile the site is allocated to.
+    int nsite = model.GetNsite();
+    CHECK(nsite > 0);
+    for (int site = 0; site < nsite; site++) {
+        int alloc = model.GetProfileAlloc(site);
+        for (int c = 0; c < 61; c++) {
+            double expected = model.GetProfileCodon(alloc, c);
+            double got = model.GetSiteCodonFitness(site, c);
+            CHECK(got == doctest::Approx(expected).epsilon(1e-9));
+        }
+    }
+
+    std::remove(tmp_prof.c_str());
+    cleanup_toy_dataset();
+}
