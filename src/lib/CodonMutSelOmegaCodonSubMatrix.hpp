@@ -85,15 +85,6 @@ class CodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
     void ComputeArray(int i) const override;
     void ComputeStationary() const override;
 
-    //! \brief normalisation scale for the codon matrix.
-    //!
-    //! Returns the nucleotide mutation scale (independent of omega), matching
-    //! pbmpi's CodonMutSelProfileSubMatrix::GetRate. Normalising the codon
-    //! matrix by this scale (rather than by its own flux) keeps omega as a pure
-    //! syn/non-syn ratio parameter: it does not change the global rate of the
-    //! matrix, and the branch lengths stay comparable across datasets.
-    double GetRate() const override;
-
     //! recompute fitnesses and log-fitnesses from the codon vector (with floor)
     void RecomputeFitness() {
         for (size_t c{0}; c < codon.size(); c++) {

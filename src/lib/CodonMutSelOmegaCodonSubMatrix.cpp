@@ -16,14 +16,6 @@ void CodonMutSelOmegaCodonSubMatrix::ComputeStationary() const {
     for (int i = 0; i < Nstate; i++) { mStationary[i] /= total; }
 }
 
-double CodonMutSelOmegaCodonSubMatrix::GetRate() const {
-    // normalisation scale = nucleotide mutation scale, independent of omega.
-    // The NucMatrix is a normalised GTR, so its GetRate() is the mutation scale
-    // (mean substitution rate of the nucleotide process). Using it here means
-    // omega only changes the syn/non-syn ratio, not the global codon rate.
-    return GetNucMatrix()->GetRate();
-}
-
 void CodonMutSelOmegaCodonSubMatrix::ComputeArray(int i) const {
     double total = 0;
     for (auto j : statespace->GetNeighbors(i)) {
