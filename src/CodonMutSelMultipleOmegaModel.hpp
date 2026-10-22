@@ -469,6 +469,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
         if (flatfitness) {
             baseNcat = 1;
+            basemin = 0;
             Ncat = 1;
         }
 
@@ -1837,7 +1838,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         os << delta_omega_array_file << '\t';
         os << omegaNcat << '\t';
         os << omega_shift << '\t';
-        os << baseNcat << '\t';
+        os << (basemin ? -baseNcat : baseNcat) << '\t';
         os << Ncat << '\t';
         os << omegamode << '\t';
         os << flatfitness << '\t';
@@ -1859,7 +1860,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         os << delta_omega_array_file << '\t';
         os << omegaNcat << '\t';
         os << omega_shift << '\t';
-        os << baseNcat << '\t';
+        os << (basemin ? -baseNcat : baseNcat) << '\t';
         os << Ncat << '\t';
         os << omegamode << '\t';
         os << flatfitness << '\t';
