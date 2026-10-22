@@ -52,14 +52,16 @@ class CodonMutSelOmegaCodonSubMatrix : public virtual NucCodonSubMatrix,
 
     //! \brief access by copy to fitness of a given codon
     //!
-    //! Note: to avoid numerical errors, this function adds 1e-8.
+    //! Note: to avoid numerical errors, this function adds kFitnessFloor (1e-8).
+    //! The asserts check that the cache is in sync with the codon vector (same arithmetic,
+    //! hence a tight tolerance); they are compiled out in Release (-DNDEBUG).
     double GetFitness(int c) const {
-        assert(std::abs((codon[c] + kFitnessFloor) - fitnesses[c]) < 1e-6);
+        assert(std::abs((codon[c] + kFitnessFloor) - fitnesses[c]) < 1e-12);
         return fitnesses[c];
     }
 
     double GetLogFitness(int c) const {
-        assert(std::abs(log(GetFitness(c)) - logfitnesses[c]) < 1e-6);
+        assert(std::abs(log(GetFitness(c)) - logfitnesses[c]) < 1e-12);
         return logfitnesses[c];
     }
 

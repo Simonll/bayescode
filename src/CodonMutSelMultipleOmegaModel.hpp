@@ -499,7 +499,12 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                           << std::endl;
             }
         }
-        assert(Ncat <= Nsite);
+        // explicit checks (asserts vanish in Release): profiles read from file may exceed Nsite
+        if (Ncat < 1 or Ncat > Nsite) {
+            std::cerr << "error: number of profile components (" << Ncat
+                      << ") must be between 1 and the number of sites (" << Nsite << ")\n";
+            exit(1);
+        }
 
         std::vector<double> opened_delta_omega_array;
         if (!delta_omega_array_file.empty() and delta_omega_array_file != "Null") {
@@ -511,6 +516,20 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             omegamode = 0;
             omegaNcat = opened_delta_omega_array.size();
         }
+        // validate before any allocation depending on omegaNcat
+        if (omegaNcat < 1) {
+            std::cerr << "error: omegancat must be >= 1\n";
+            exit(1);
+        }
+        if (omega_shift < 0) {
+            std::cerr << "error: omegashift must be >= 0\n";
+            exit(1);
+        }
+        if (omegaNcat > 1 and omegamode == 3) {
+            std::cerr << "warning: omegancat = " << omegaNcat
+                      << " without --freeomega: all omega components are fixed to 1, so the "
+                         "components are identical\n";
+        }
         std::cout << "Number of sites: " << Nsite << std::endl;
         std::cout << "Number of profile categories (cut-off for infinite mixture): " << Ncat
                   << '\n';
@@ -521,6 +540,10 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
         // get tree from file (newick format)
         std::ifstream tree_stream{treefile};
+        if (!tree_stream) {
+            std::cerr << "error: cannot open tree file " << treefile << std::endl;
+            exit(1);
+        }
         NHXParser parser{tree_stream};
         tree = make_from_parser(parser);
 
@@ -641,14 +664,6 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         omega_occupancy = new OccupancySuffStat(omegaNcat);
 
         // omega (fixed to 1 by default)
-        if (omegaNcat < 1) {
-            std::cerr << "error: omegancat must be >= 1\n";
-            exit(1);
-        }
-        if (omega_shift < 0) {
-            std::cerr << "error: omegashift must be >= 0\n";
-            exit(1);
-        }
         delta_omegahypermean = 1.0;
         delta_omegahyperinvshape = 1.0;
         delta_omega_array = new IIDGamma(omegaNcat, delta_omegahypermean, delta_omegahyperinvshape);
@@ -761,13 +776,14 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(
             info, "omegaent", [this]() { return Random::GetEntropy(omega_weight->GetArray()); });
         model_stat(info, "ncluster", [this]() { return GetNcluster(); });
+        // kappa/basekappa are declared both as model nodes (.chain file) and as stats (.trace
+        // file): these are two distinct files, so each column appears once per file.
         model_stat(info, "kappa", kappa);
         if (baseNcat > 1) {
+            model_stat(info, "basencluster", [this]() { return GetBaseNcluster(); });
             if (basemin) {
-                model_stat(info, "basencluster", [this]() { return GetBaseNcluster(); });
                 model_stat(info, "baseweight1", [this]() { return baseweight->GetVal(1); });
             } else {
-                model_stat(info, "basencluster", [this]() { return GetBaseNcluster(); });
                 model_stat(info, "basekappa", basekappa);
             }
         }
