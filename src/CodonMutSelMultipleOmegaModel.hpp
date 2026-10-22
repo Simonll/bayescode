@@ -738,8 +738,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
         model_stat(info, "logprior", [this]() { return GetLogPrior(); });
         model_stat(info, "lnL", [this]() { return GetLogLikelihood(); });
-        // 3x: per coding site (and not per nucleotide site)
-        model_stat(info, "length", [this]() { return 3 * branchlength->GetTotalLength(); });
+        model_stat(info, "length", [this]() { return branchlength->GetTotalLength(); });
         model_stat(info, "omega", [this]() { return GetMeanComponentOmega(); });
         model_stat(info, "ds", [this]() { return GetPredictedRelativedS(); });
         model_stat(info, "dn", [this]() { return GetPredictedRelativedN(); });
@@ -801,10 +800,6 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     double GetNucRR(int i) { return nucrelrate[i]; }
     double GetNucStat(int i) { return nucstat[i]; }
-    int GetNucRRIndex(int i, int j) {
-        if (i > j) std::swap(i, j);  // Assure i < j
-        return i * (2*4 - i - 3) / 2 + (j - i - 1);
-    }
     double GetAC() {return nucrelrate[0];}
     double GetAG() {return nucrelrate[1];}
     double GetAT() {return nucrelrate[2];}
