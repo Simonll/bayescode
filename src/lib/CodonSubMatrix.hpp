@@ -83,7 +83,7 @@ class OmegaCodonSubMatrix : public virtual CodonSubMatrix {
           CodonSubMatrix(instatespace, normalise),
           omega(inomega) {}
 
-    double GetOmega() const { return omega + omegamin; }
+    double GetOmega() const { return omega; }
     void SetOmega(double inomega) {
         omega = inomega;
         CorruptMatrix();
