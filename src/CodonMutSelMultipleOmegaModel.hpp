@@ -209,106 +209,36 @@ inline std::tuple<std::vector<std::vector<double>>, std::vector<size_t>> open_pr
     return std::make_tuple(fitness_profiles, alloc);
 }
 
+/**
+ * Read a single vector of `size` strictly positive values (header line, then one data line;
+ * leading columns are ignored). The sum must be 1 up to 1e-5; the vector is then renormalized
+ * to sum exactly to 1.
+ */
+inline std::vector<double> open_simplex_vector(
+    std::string const &file_name, int size, std::string const &what) {
+    auto rows = read_numeric_rows(file_name, size);
+    if (rows.size() != 1) {
+        parsing_error(file_name, what + ": expected exactly one data line after the header, found " +
+                                     std::to_string(rows.size()));
+    }
+    std::vector<double> v = std::move(rows[0]);
+    for (double x : v) {
+        if (!(x > 0)) { parsing_error(file_name, what + ": values must be strictly positive"); }
+    }
+    double sum = std::accumulate(v.begin(), v.end(), 0.0);
+    if (std::abs(sum - 1.0) > 1e-5) {
+        parsing_error(file_name, what + " doesn't sum to 1 (sum = " + std::to_string(sum) + ")");
+    }
+    for (double &x : v) { x /= sum; }
+    return v;
+}
+
 inline std::vector<double> open_nucstat(std::string const &file_name, int size) {
-    std::ifstream input_stream(file_name);
-    if (!input_stream) {
-        std::cerr << "nucstat file " << file_name << " doesn't exist" << std::endl;
-        exit(1);
-    }
-
-    std::string line;
-
-    // skip the header of the file
-    getline(input_stream, line);
-    char sep{' '};
-    long nbr_col = 0;
-    for (char sep_test : std::vector<char>({' ', ',', '\t'})) {
-        long n = std::count(line.begin(), line.end(), sep_test);
-        if (n > nbr_col) {
-            sep = sep_test;
-            nbr_col = n + 1;
-        }
-    }
-    nbr_col -= size;
-    if (nbr_col < 0) {
-        std::cerr << "error in nucstat file " << file_name << ": header has fewer than "
-                  << size << " columns\n";
-        exit(1);
-    }
-
-    getline(input_stream, line);
-    std::vector<double> nucstat_(size, 0.0);
-    std::string word;
-    std::istringstream line_stream(line);
-    unsigned counter{0};
-    while (getline(line_stream, word, sep)) {
-        if (counter >= nbr_col) {
-            if (counter - nbr_col >= (unsigned)size) {
-                std::cerr << "error in nucstat file " << file_name << ": row has more than "
-                          << size << " columns\n";
-                exit(1);
-            }
-            nucstat_[counter - nbr_col] = stod(word);
-        }
-        counter++;
-    }
-
-    bool push = true;
-    if (std::abs(std::accumulate(nucstat_.begin(), nucstat_.end(), 0.0) - 1.0) > 1e-5) {
-        std::cerr << "nucstat doesn't sum to 1 for line:\n" << line << std::endl;
-    };
-    return nucstat_;
+    return open_simplex_vector(file_name, size, "nucstat");
 }
 
 inline std::vector<double> open_nucrelrate(std::string const &file_name, int size) {
-    std::ifstream input_stream(file_name);
-    if (!input_stream) {
-        std::cerr << "nucrelrate file " << file_name << " doesn't exist" << std::endl;
-        exit(1);
-    }
-
-    std::string line;
-
-    // skip the header of the file
-    getline(input_stream, line);
-    char sep{' '};
-    long nbr_col = 0;
-    for (char sep_test : std::vector<char>({' ', ',', '\t'})) {
-        long n = std::count(line.begin(), line.end(), sep_test);
-        if (n > nbr_col) {
-            sep = sep_test;
-            nbr_col = n + 1;
-        }
-    }
-    nbr_col -= size;
-    if (nbr_col < 0) {
-        std::cerr << "error in nucrelrate file " << file_name << ": header has fewer than "
-                  << size << " columns\n";
-        exit(1);
-    }
-
-    getline(input_stream, line);
-    std::vector<double> nucrelrate_(size, 0.0);
-    std::string word;
-    std::istringstream line_stream(line);
-    unsigned counter{0};
-    while (getline(line_stream, word, sep)) {
-        if (counter >= nbr_col) {
-            if (counter - nbr_col >= (unsigned)size) {
-                std::cerr << "error in nucrelrate file " << file_name << ": row has more than "
-                          << size << " columns\n";
-                exit(1);
-            }
-            nucrelrate_[counter - nbr_col] = stod(word);
-        }
-        counter++;
-    }
-
-    bool push = true;
-    if (std::abs(std::accumulate(nucrelrate_.begin(), nucrelrate_.end(), 0.0) - 1.0) > 1e-5) {
-        std::cerr << "nucrelrate doesn't sum to 1 for line:\n" << line << std::endl;
-    };
-    return nucrelrate_;
+    return open_simplex_vector(file_name, size, "nucrelrate");
 }
 class CodonMutSelMultipleOmegaModel : public ChainComponent {
     std::string datafile, treefile, profilesfile{"Null"}, nucstatfile{"Null"},
