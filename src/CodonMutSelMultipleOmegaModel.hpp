@@ -297,7 +297,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     std::vector<double> nucstat;
     std::vector<double> nucrelrate;
-    GTRSubMatrix *nucmatrix;
+    GTRSubMatrixCodon *nucmatrix;
 
     bool clamp_delta_omega_array{false};
     std::string delta_omega_array_file = "Null";
@@ -599,7 +599,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             clamp_nucstat = true;
         }
 
-        nucmatrix = new GTRSubMatrix(Nnuc, nucrelrate, nucstat, true);
+        nucmatrix = new GTRSubMatrixCodon(Nnuc, nucrelrate, nucstat, true);
 
         // base distribution (can be skipped)
         basekappa = 1.0;

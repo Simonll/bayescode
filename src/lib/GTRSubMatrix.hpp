@@ -43,4 +43,20 @@ class GTRSubMatrix : public virtual SubMatrix {
     }
 };
 
+//! GTRSubMatrix with the x3 codon factor in GetRate().
+//!
+//! The nucleotide GTR is normalised so that the neutral mutation flux is
+//! 1 per codon (3 positions x 1/3 per nt). The x3 is only needed by the
+//! codon mut-sel model (CodonMutSelMultipleOmega); the base GTRSubMatrix
+//! keeps the plain 2*norm scale for the other models (SingleOmega, M2a, ...).
+class GTRSubMatrixCodon : public GTRSubMatrix {
+  public:
+    GTRSubMatrixCodon(int inNstate, const std::vector<double> &rr,
+        const std::vector<double> &stat, bool innormalise = false)
+        : SubMatrix(inNstate, innormalise), GTRSubMatrix(inNstate, rr, stat, innormalise) {}
+
+  protected:
+    double GetRate() const override;
+};
+
 #endif

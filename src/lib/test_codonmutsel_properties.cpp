@@ -48,7 +48,7 @@ const std::vector<double> nonuniform_rr{0.5, 2.0, 1.3, 0.7, 3.1, 1.1};
 TEST_CASE("CodonMutSelOmegaCodonSubMatrix: detailed balance pi_i Q_ij == pi_j Q_ji") {
     CodonStateSpace ss(Universal);
     int N = ss.GetNstate();
-    GTRSubMatrix nuc(4, nonuniform_rr, nonuniform_stat, true);
+    GTRSubMatrixCodon nuc(4, nonuniform_rr, nonuniform_stat, true);
     auto fit = make_profile(N);
     CodonMutSelOmegaCodonSubMatrix m(&ss, &nuc, fit, 0.37, false);
     m.UpdateMatrix();
@@ -69,7 +69,7 @@ TEST_CASE("CodonMutSelOmegaCodonSubMatrix: detailed balance pi_i Q_ij == pi_j Q_
 TEST_CASE("CodonMutSelOmegaCodonSubMatrix: rows sum to zero, off-diagonals >= 0") {
     CodonStateSpace ss(Universal);
     int N = ss.GetNstate();
-    GTRSubMatrix nuc(4, nonuniform_rr, nonuniform_stat, true);
+    GTRSubMatrixCodon nuc(4, nonuniform_rr, nonuniform_stat, true);
     auto fit = make_profile(N);
     CodonMutSelOmegaCodonSubMatrix m(&ss, &nuc, fit, 2.5, false);
     m.UpdateMatrix();
@@ -90,9 +90,9 @@ TEST_CASE("CodonMutSelOmegaCodonSubMatrix: non-synonymous rates are linear in om
     CodonStateSpace ss(Universal);
     int N = ss.GetNstate();
     auto fit = make_profile(N);
-    GTRSubMatrix nuc1(4, nonuniform_rr, nonuniform_stat, true);
-    GTRSubMatrix nuc2(4, nonuniform_rr, nonuniform_stat, true);
-    GTRSubMatrix nuc7(4, nonuniform_rr, nonuniform_stat, true);
+    GTRSubMatrixCodon nuc1(4, nonuniform_rr, nonuniform_stat, true);
+    GTRSubMatrixCodon nuc2(4, nonuniform_rr, nonuniform_stat, true);
+    GTRSubMatrixCodon nuc7(4, nonuniform_rr, nonuniform_stat, true);
     CodonMutSelOmegaCodonSubMatrix m1(&ss, &nuc1, fit, 1.0, false);
     CodonMutSelOmegaCodonSubMatrix m2(&ss, &nuc2, fit, 2.0, false);
     CodonMutSelOmegaCodonSubMatrix m7(&ss, &nuc7, fit, 0.7, false);
@@ -129,7 +129,7 @@ TEST_CASE("CodonMutSelOmegaCodonSubMatrix: neutral flux is 1 substitution per co
     int N = ss.GetNstate();
     std::vector<double> rr(6, 1.0);
     std::vector<double> stat(4, 0.25);
-    GTRSubMatrix nuc(4, rr, stat, true);
+    GTRSubMatrixCodon nuc(4, rr, stat, true);
     std::vector<double> fit(N, 1.0 / N);  // flat profile
     CodonMutSelOmegaCodonSubMatrix m(&ss, &nuc, fit, 1.0, false);
     m.UpdateMatrix();
@@ -157,7 +157,7 @@ TEST_CASE("CodonMutSelOmegaCodonSubMatrix: neutral flux is 1 substitution per co
 TEST_CASE("CodonMutSelOmegaCodonSubMatrix: neutral flux ~1 per codon, non-uniform nucleotides") {
     CodonStateSpace ss(Universal);
     int N = ss.GetNstate();
-    GTRSubMatrix nuc(4, nonuniform_rr, nonuniform_stat, true);
+    GTRSubMatrixCodon nuc(4, nonuniform_rr, nonuniform_stat, true);
     std::vector<double> fit(N, 1.0 / N);
     CodonMutSelOmegaCodonSubMatrix m(&ss, &nuc, fit, 1.0, false);
     m.UpdateMatrix();
@@ -167,7 +167,7 @@ TEST_CASE("CodonMutSelOmegaCodonSubMatrix: neutral flux ~1 per codon, non-unifor
     CHECK(flux > 0.8);
 }
 
-TEST_CASE("GTRSubMatrix::GetRate == 2 * 3 * sum_{i<j} pi_i pi_j rr_ij") {
+TEST_CASE("GTRSubMatrix::GetRate == 2 * sum_{i<j} pi_i pi_j rr_ij (base, no x3)") {
     for (int variant = 0; variant < 2; variant++) {
         std::vector<double> rr = variant ? nonuniform_rr : std::vector<double>(6, 1.0);
         std::vector<double> stat = variant ? nonuniform_stat : std::vector<double>(4, 0.25);
@@ -178,12 +178,12 @@ TEST_CASE("GTRSubMatrix::GetRate == 2 * 3 * sum_{i<j} pi_i pi_j rr_ij") {
         for (int i = 0; i < 3; i++) {
             for (int j = i + 1; j < 4; j++) norm += stat[i] * stat[j] * rr[k++];
         }
-        CHECK(g.Rate() == doctest::Approx(2 * norm * 3).epsilon(1e-12));
+        CHECK(g.Rate() == doctest::Approx(2 * norm).epsilon(1e-12));
     }
-    // uniform case in closed form: 2 * (6/16) * 3 = 2.25
+    // uniform case in closed form: 2 * (6/16) = 0.75
     std::vector<double> rr(6, 1.0), stat(4, 0.25);
     ExposedGTR u(4, rr, stat, false);
-    CHECK(u.Rate() == doctest::Approx(2.25).epsilon(1e-12));
+    CHECK(u.Rate() == doctest::Approx(0.75).epsilon(1e-12));
 }
 
 // The reader is a main(), so it cannot be linked in. Lock the x3 fix by scanning
