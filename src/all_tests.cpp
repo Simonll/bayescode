@@ -14,6 +14,8 @@
 
 #include "lib/test_codonmutsel_units.cpp"
 
+#include "lib/test_codonmutsel_mcmc.cpp"
+
 #include "operations/test.cpp"
 
 #include "tags/test.cpp"
