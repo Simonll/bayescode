@@ -894,8 +894,14 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             total += StickBreakingHyperLogPrior();
             total += StickBreakingLogPrior();
             total += CodonLogPrior();
+            // allocations given the mixture weights
+            total += profile_alloc->GetLogProb();
+            total += componentalloc->GetLogProb();
         }
         if (omegamode < 2) { total += DeltaOmegaLogProb(); }
+        // omega mixture: Dirichlet prior on the weights + allocations given the weights
+        total += omega_weight->GetLogProb();
+        total += omega_alloc->GetLogProb();
         return total;
     }
 
