@@ -14,6 +14,8 @@
 
 #include "lib/test_codonmutsel_units.cpp"
 
+#include "lib/test_codonmutsel_robustness.cpp"
+
 #include "operations/test.cpp"
 
 #include "tags/test.cpp"
