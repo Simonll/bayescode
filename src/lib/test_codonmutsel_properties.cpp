@@ -195,17 +195,25 @@ TEST_CASE("ReadCodonMutSelMultipleOmega: --for_simulation writes branch lengths 
     std::ifstream in(dir + "../ReadCodonMutSelMultipleOmega.cpp");
     REQUIRE(in.good());
 
+    // The length is formatted on a separate line (full precision stream) just before set_tag.
+    auto check_unscaled = [](const std::string &l) {
+        CHECK(l.find("3 *") == std::string::npos);
+        CHECK(l.find("* 3") == std::string::npos);
+        CHECK(l.find("3*") == std::string::npos);
+    };
     std::string line;
-    int found = 0;
+    int found = 0, formatted = 0;
     while (std::getline(in, line)) {
+        if (line.find("GetBranchLength(node)") != std::string::npos) {
+            formatted++;
+            check_unscaled(line);
+        }
         if (line.find("set_tag") != std::string::npos &&
             line.find("\"length\"") != std::string::npos) {
             found++;
-            CHECK(line.find("to_string(model.GetBranchLength(node))") != std::string::npos);
-            CHECK(line.find("3 *") == std::string::npos);
-            CHECK(line.find("* 3") == std::string::npos);
-            CHECK(line.find("3*") == std::string::npos);
+            check_unscaled(line);
         }
     }
     CHECK(found == 1);
+    CHECK(formatted == 1);
 }

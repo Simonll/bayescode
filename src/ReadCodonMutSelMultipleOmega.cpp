@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <iomanip>
+#include <sstream>
 #include "CodonMutSelMultipleOmegaModel.hpp"
 #include "components/ChainDriver.hpp"
 #include "components/ChainReader.hpp"
@@ -170,6 +172,8 @@ int main(int argc, char *argv[]) {
     } else if (read_args.prepare_files_for_simulation.getValue()) {
         string filename{chain_name + ".pvalues"};
         std::ofstream os(filename);
+        // full double precision so that profiles still sum to 1 and tiny values survive
+        os << std::setprecision(17);
         // 13-token stamp compatible with LikelihoodFreePhylogenetics
         model.GetPvaluesStamp(os);
         os << '\n';
@@ -182,7 +186,10 @@ int main(int argc, char *argv[]) {
             for (Tree::NodeIndex node = 0; node < Tree::NodeIndex(model.GetTree().nb_nodes());
                  node++) {
                 if (!model.GetTree().is_root(node)) {
-                    export_tree.set_tag(node, "length", to_string(model.GetBranchLength(node)));
+                    // to_string would print 6 fixed decimals, flattening tiny branches to 0
+                    std::ostringstream length_stream;
+                    length_stream << std::setprecision(17) << model.GetBranchLength(node);
+                    export_tree.set_tag(node, "length", length_stream.str());
                 }
             }
             os << export_tree.as_string() << '\n';
