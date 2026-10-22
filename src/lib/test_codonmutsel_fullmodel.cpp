@@ -129,16 +129,15 @@ TEST_CASE("CodonMutSelMultipleOmegaModel: GetPvaluesStamp is exactly 13 tokens, 
 }
 
 // ---------------------------------------------------------------------------
-// Regression test for C5 validations at model level: an omegashift < 0 must be
-// rejected. (The model prints an error and exits; we assert the guard exists by
-// checking a negative shift cannot be silently accepted through construction in
-// a mode where it would reach the IIDGamma allocation.)  We instead check the
-// behaviour that IS portable: inputting a negative shift while omegancat > 0
-// must not produce NaN in the delta-omega array when omega is pinned (mode 3).
+// Regression test for C5: in fixed-omega mode (omegamode=3) without a loaded
+// array, every component's delta-omega is 1, so GetComponentOmega(k) must equal
+// omegashift + 1 for all k (the old bug ignored the shift and left omega at 1).
+// (The rejection of a negative shift exits the process, so it is not testable
+// in-process.)
 // ---------------------------------------------------------------------------
-TEST_CASE("CodonMutSelMultipleOmegaModel: omega-pinned mode keeps delta-omega = shift (C5)") {
+TEST_CASE("CodonMutSelMultipleOmegaModel: omega-pinned mode gives omega = shift + 1 (C5)") {
     write_toy_dataset();
-    // omegamode=3 (fixed): delta_omega_array must be all equal, no NaN, even for
+    // omegamode=3 (fixed): delta_omega_array must be all 1, no NaN, even for
     // omegancat > 1 without a loaded array file.
     CodonMutSelMultipleOmegaModel model(
         tmp_ali, tmp_tree, "Null", "Null", "Null",
@@ -146,9 +145,8 @@ TEST_CASE("CodonMutSelMultipleOmegaModel: omega-pinned mode keeps delta-omega = 
         0.25,         // omegashift >= 0
         true, "Null", true, true);
 
-    // In fixed mode without a loaded array, GetComponentOmega must return the
-    // shift for every component (all delta-omega set to 1.0 was the old bug
-    // leading to omega=1 despite a shift).
+    // GetComponentOmega must return shift + delta (= 1) for every component,
+    // not 1 (shift ignored).
     double o0 = model.GetComponentOmega(0);
     double o1 = model.GetComponentOmega(1);
     double o2 = model.GetComponentOmega(2);
