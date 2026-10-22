@@ -8,6 +8,8 @@
 
 #include "lib/test_codonmutsel_fullmodel.cpp"
 
+#include "lib/test_codonmutsel_properties.cpp"
+
 #include "operations/test.cpp"
 
 #include "tags/test.cpp"
