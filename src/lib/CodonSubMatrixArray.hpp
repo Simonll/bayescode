@@ -322,10 +322,10 @@ class CodonMutSelOmegaCodonSubMatrixArray : public Array<SubMatrix>,
         for (int i = 0; i < GetSize(); i++) {
             if (omegaarray) {
                 matrixarray[i] = new CodonMutSelOmegaCodonSubMatrix(codonstatespace, nucmatrix,
-                    codonfitnessarray->GetVal(i), omegaarray->GetVal(i), true);
+                    codonfitnessarray->GetVal(i), omegaarray->GetVal(i), false);
             } else {
                 matrixarray[i] = new CodonMutSelOmegaCodonSubMatrix(
-                    codonstatespace, nucmatrix, codonfitnessarray->GetVal(i), omega, true);
+                    codonstatespace, nucmatrix, codonfitnessarray->GetVal(i), omega, false);
             }
         }
     }
