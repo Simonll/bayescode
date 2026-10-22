@@ -100,8 +100,9 @@ int main(int argc, char *argv[]) {
         }
         vector<vector<double>> omega(model.GetNsite());
         vector<double> gene_omega{};
-        double upper = max(ci, 1.0 - ci);
-        double lower = min(ci, 1.0 - ci);
+        // ci is the central credible mass: ci=0.95 -> quantiles 0.025 and 0.975
+        double upper = (1.0 + ci) / 2.0;
+        double lower = (1.0 - ci) / 2.0;
 
         for (int step = 0; step < size; step++) {
             cerr << '.';

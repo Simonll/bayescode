@@ -45,6 +45,13 @@ class MultinomialAllocationVector : public SimpleArray<int> {
         }
     }
 
+    //! log probability of the allocations given the mixture weights
+    double GetLogProb() const {
+        double tot = 0;
+        for (int i = 0; i < GetSize(); i++) { tot += std::log(weight[GetVal(i)]); }
+        return tot;
+    }
+
     //! apply permutation to allocation vector
     void Permute(const Selector<int> &permut) override {
         if (permut.GetSize() != int(weight.size())) {

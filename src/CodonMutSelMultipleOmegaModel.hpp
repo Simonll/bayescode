@@ -469,6 +469,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
         if (flatfitness) {
             baseNcat = 1;
+            basemin = 0;
             Ncat = 1;
         }
 
@@ -893,8 +894,14 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             total += StickBreakingHyperLogPrior();
             total += StickBreakingLogPrior();
             total += CodonLogPrior();
+            // allocations given the mixture weights
+            total += profile_alloc->GetLogProb();
+            total += componentalloc->GetLogProb();
         }
         if (omegamode < 2) { total += DeltaOmegaLogProb(); }
+        // omega mixture: Dirichlet prior on the weights + allocations given the weights
+        total += omega_weight->GetLogProb();
+        total += omega_alloc->GetLogProb();
         return total;
     }
 
@@ -1388,6 +1395,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         weight->LabelSwitchingMove(5, *profile_occupancy, permut);
         profile_alloc->Permute(permut);
         componentcodonfitnessarray->Permute(permut);
+        componentalloc->Permute(permut);
     }
 
     //! Gibbs resample mixture weights (based on profile_occupancy suff stats)
@@ -1837,7 +1845,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         os << delta_omega_array_file << '\t';
         os << omegaNcat << '\t';
         os << omega_shift << '\t';
-        os << baseNcat << '\t';
+        os << (basemin ? -baseNcat : baseNcat) << '\t';
         os << Ncat << '\t';
         os << omegamode << '\t';
         os << flatfitness << '\t';
@@ -1859,7 +1867,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         os << delta_omega_array_file << '\t';
         os << omegaNcat << '\t';
         os << omega_shift << '\t';
-        os << baseNcat << '\t';
+        os << (basemin ? -baseNcat : baseNcat) << '\t';
         os << Ncat << '\t';
         os << omegamode << '\t';
         os << flatfitness << '\t';
