@@ -18,4 +18,6 @@
 
 #include "tags/test.cpp"
 
+#ifndef BAYESCODE_NO_MPI
 #include "mpi_components/test/seq_test.cpp"
+#endif
