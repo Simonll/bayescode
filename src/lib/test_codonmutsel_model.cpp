@@ -76,6 +76,7 @@ TEST_CASE("CodonMutSelOmegaCodonSubMatrix: relative dN/dS is sane on flat profil
     CHECK(ds > 0.0);
     double dnds = m.GetPredictedRelativeDNDS();
     CHECK(std::isfinite(dnds));
-    // Neutral profile, no omega strain: relative dN/dS close to 1.
-    CHECK(dnds == doctest::Approx(1.0).epsilon(0.2));
+    // Neutral profile, omega=1: flows are exactly the neutral ones, so the
+    // relative dN/dS is 1 up to rounding.
+    CHECK(dnds == doctest::Approx(1.0).epsilon(1e-9));
 }
