@@ -1,7 +1,9 @@
 #include "doctest.h"
 
 #include "CodonMutSelMultipleOmegaModel.hpp"
+#include "test_tmp_names.hpp"
 
+#include <csignal>
 #include <cstdio>
 #include <fstream>
 #include <sstream>
@@ -19,6 +21,34 @@ namespace {
 std::string tmp_ali;
 std::string tmp_tree;
 
+// Every temp file created by this suite is registered here and removed (a) by
+// the individual tests, (b) at process exit, even when a test aborted through
+// a failed REQUIRE / exception, and (c) on SIGINT/SIGTERM.
+std::vector<std::string> registered_tmp;
+
+void remove_registered_tmp() {
+    for (const auto &f : registered_tmp) { std::remove(f.c_str()); }
+    registered_tmp.clear();
+}
+
+void tmp_signal_handler(int sig) {
+    remove_registered_tmp();
+    std::signal(sig, SIG_DFL);
+    std::raise(sig);
+}
+
+std::string register_tmp(const std::string &name) {
+    static const bool installed = [] {
+        std::atexit(remove_registered_tmp);
+        std::signal(SIGINT, tmp_signal_handler);
+        std::signal(SIGTERM, tmp_signal_handler);
+        return true;
+    }();
+    (void)installed;
+    registered_tmp.push_back(name);
+    return name;
+}
+
 //! write alignment + tree into a temp dir and stash the paths
 void write_toy_dataset() {
     // 12 codons / 36 nt, identical length across the 5 taxa; several
@@ -30,8 +60,8 @@ void write_toy_dataset() {
         "ATGGCCGATATTGTCAGCATGAAAGCCTGCCCGCCG",
         "ATGGCCGATATTGTCAGCGTGAAAGCCTGCCCGCTG",
     };
-    tmp_ali = "mutselc_test_ali.phy";
-    tmp_tree = "mutselc_test_tree.tre";
+    tmp_ali = register_tmp(unique_tmp_name("ali.phy"));
+    tmp_tree = register_tmp(unique_tmp_name("tree.tre"));
     {
         std::ofstream out(tmp_ali);
         out << seq.size() << " " << seq[0].size() << "\n";
@@ -185,7 +215,7 @@ TEST_CASE("CodonMutSelMultipleOmegaModel: GetSiteCodonFitness uses the site prof
     // [0,0,0,0,0,0,1,1,1,1,1,1]. This is NOT an involution (profile_alloc[1]=0),
     // so a double application of the allocation (the B2 bug) is detectable:
     // for site 6, profile_alloc[profile_alloc[6]] = profile_alloc[1] = 0 != 1.
-    std::string tmp_prof = "mutselc_test_profiles.txt";
+    std::string tmp_prof = register_tmp(unique_tmp_name("profiles.txt"));
     {
         std::ofstream out(tmp_prof);
         for (int c = 0; c < 61; c++) { out << "1 "; }
@@ -219,6 +249,5 @@ TEST_CASE("CodonMutSelMultipleOmegaModel: GetSiteCodonFitness uses the site prof
         }
     }
 
-    std::remove(tmp_prof.c_str());
     cleanup_toy_dataset();
 }

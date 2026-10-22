@@ -1,6 +1,7 @@
 #include "doctest.h"
 
 #include "CodonMutSelMultipleOmegaModel.hpp"
+#include "test_tmp_names.hpp"
 
 #include <fcntl.h>
 #include <sys/wait.h>
@@ -82,7 +83,7 @@ bool is_rejected_or_correct(int s) { return s == kReturnedOk || is_clean_rejecti
 
 struct TmpFile {
     std::string name;
-    TmpFile(std::string const &n, std::string const &content) : name(n) {
+    TmpFile(std::string const &n, std::string const &content) : name(unique_tmp_name(n)) {
         std::ofstream out(name);
         out << content;
     }
