@@ -327,6 +327,9 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     DirichletSuffStatArray *basesuffstatarray;
 
     MultinomialAllocationVector *profile_alloc;
+    // sites allocated to each profile component; kept in sync with profile_alloc by
+    // UpdateProfileSites() so that per-component log probs cost O(sites of k), not O(Nsite)
+    std::vector<std::vector<int>> profile_sites;
 
     // an array of codon matrices (one for each distinct aa fitness profile)
     CodonMutSelCodonMatrixBidimArray *componentcodonmatrixbidimarray;
@@ -1015,11 +1018,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     //! component k of the mixture
     double PathSuffStatLogProb(int k) const {
         double tot{0};
-        for (int site{0}; site < GetNsite(); site++) {
-            if (profile_alloc->GetVal(site) == k) {
-                tot += sitepathsuffstatarray->GetVal(site).GetLogProb(
-                    sitesubmatrixarray->GetVal(site));
-            }
+        for (int site : profile_sites[k]) {
+            tot += sitepathsuffstatarray->GetVal(site).GetLogProb(sitesubmatrixarray->GetVal(site));
         }
         return tot;
     }
@@ -1170,8 +1170,12 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     //! MCMC move schedule on branch lengths
     void MoveBranchLengths() { ResampleBranchLengths(); }
 
-    //! MH move on nucleotide rate parameters
+    //! acceptance rate of a move; 0 when no proposal was made (e.g. no occupied component)
+    static double AcceptanceRate(double nacc, double ntot) { return ntot > 0 ? nacc / ntot : 0.0; }
 
+    //! MH move on nucleotide stationary probabilities.
+    //! Cost note: nucleotide parameters affect every codon matrix, so each proposal
+    //! rebuilds all matrices (UpdateMatrices) and rescans all sites; this is inherent.
     void MoveNucStat() {
         for (double tuning : {0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.04, 0.03, 0.02, 0.01}) {
             Move::Profile(nucstat, tuning, 1, 1, &CodonMutSelMultipleOmegaModel::NucRatesLogProb,
@@ -1260,7 +1264,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 }
             }
         }
-        return nacc / ntot;
+        return AcceptanceRate(nacc, ntot);
     }
 
 
@@ -1349,7 +1353,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 }
             }
         }
-        return nacc / ntot;
+        return AcceptanceRate(nacc, ntot);
     }
 
     //! Gibbs resample mixture allocations
@@ -1366,6 +1370,15 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     void UpdateProfileOccupancies() {
         profile_occupancy->Clear();
         profile_occupancy->AddSuffStat(*profile_alloc);
+        UpdateProfileSites();
+    }
+
+    //! rebuild the list of sites allocated to each profile component
+    void UpdateProfileSites() {
+        profile_sites.assign(Ncat, std::vector<int>());
+        for (int site = 0; site < Nsite; site++) {
+            profile_sites[profile_alloc->GetVal(site)].push_back(site);
+        }
     }
 
     //! get allocation posterior probabilities for a given site
@@ -1395,6 +1408,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         weight->LabelSwitchingMove(5, *profile_occupancy, permut);
         profile_alloc->Permute(permut);
         componentcodonfitnessarray->Permute(permut);
+        UpdateProfileSites();
     }
 
     //! Gibbs resample mixture weights (based on profile_occupancy suff stats)
@@ -1465,7 +1479,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 ntot++;
             }
         }
-        return nacc / ntot;
+        return AcceptanceRate(nacc, ntot);
     }
 
     //! MCMC module for moving the concentration parameters of the components of
@@ -1492,7 +1506,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 ntot++;
             }
         }
-        return nacc / ntot;
+        return AcceptanceRate(nacc, ntot);
     }
 
     //! resample empty components of the base mixture from the prior
@@ -1617,7 +1631,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 }
             }
         }
-        return nacc / ntot;
+        return AcceptanceRate(nacc, ntot);
     }
 
     void ResampleEmptyOmegaComponents() { delta_omega_array->PriorResample(*omega_occupancy); };
