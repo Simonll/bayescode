@@ -85,7 +85,7 @@ inline std::vector<double> open_delta_omega_array(std::string const &file_name) 
 inline double distance(std::vector<double> const &v1, std::vector<double> const &v2) {
     double tot = 0;
     assert(v1.size() == v2.size());
-    for (size_t i = 0; i < v1.size(); i++) { tot += abs(v1[i] - v2[i]); }
+    for (size_t i = 0; i < v1.size(); i++) { tot += std::abs(v1[i] - v2[i]); }
     return tot;
 }
 
