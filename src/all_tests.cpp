@@ -10,6 +10,8 @@
 
 #include "lib/test_codonmutsel_properties.cpp"
 
+#include "lib/test_codonmutsel_parsing.cpp"
+
 #include "operations/test.cpp"
 
 #include "tags/test.cpp"
