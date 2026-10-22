@@ -89,61 +89,109 @@ inline double distance(std::vector<double> const &v1, std::vector<double> const 
     return tot;
 }
 
+//! Fatal error while parsing an input file
+[[noreturn]] inline void parsing_error(std::string const &file_name, std::string const &what) {
+    std::cerr << "error in file " << file_name << ": " << what << std::endl;
+    exit(1);
+}
+
+//! Guess the separator (space, comma or tab) from the header line
+inline char detect_separator(std::string const &header) {
+    char sep{' '};
+    long best = 0;
+    for (char sep_test : std::vector<char>({' ', ',', '\t'})) {
+        long n = std::count(header.begin(), header.end(), sep_test);
+        if (n > best) {
+            sep = sep_test;
+            best = n;
+        }
+    }
+    return sep;
+}
+
+//! Split a line on sep, keeping empty inner fields; a single trailing separator is ignored
+inline std::vector<std::string> split_fields(std::string line, char sep) {
+    if (!line.empty() and line.back() == '\r') { line.pop_back(); }
+    if (!line.empty() and line.back() == sep) { line.pop_back(); }
+    std::vector<std::string> fields;
+    std::string word;
+    std::istringstream line_stream(line);
+    while (getline(line_stream, word, sep)) { fields.push_back(word); }
+    if (!line.empty() and line.back() == sep) { fields.emplace_back(); }
+    return fields;
+}
+
+//! Strict conversion: the whole field must be a finite number
+inline double parse_number(std::string const &file_name, std::string const &word) {
+    size_t pos = 0;
+    double value = 0;
+    try {
+        value = std::stod(word, &pos);
+    } catch (std::exception const &) { pos = 0; }
+    while (pos > 0 and pos < word.size() and std::isspace(static_cast<unsigned char>(word[pos]))) {
+        pos++;
+    }
+    if (pos == 0 or pos != word.size() or !std::isfinite(value)) {
+        parsing_error(file_name, "'" + word + "' is not a valid number");
+    }
+    return value;
+}
+
+/**
+ * Read the last `size` fields of each non-empty line after the header. Leading columns
+ * (row names, ...) are ignored. All rows must have the same number of fields, at least `size`.
+ */
+inline std::vector<std::vector<double>> read_numeric_rows(
+    std::string const &file_name, int size) {
+    std::ifstream input_stream(file_name);
+    if (!input_stream) {
+        std::cerr << "file " << file_name << " doesn't exist" << std::endl;
+        exit(1);
+    }
+    std::string line;
+    if (!getline(input_stream, line)) { parsing_error(file_name, "file is empty"); }
+    char sep = detect_separator(line);
+
+    std::vector<std::vector<double>> rows;
+    size_t nfields = 0;
+    size_t line_number = 1;
+    while (getline(input_stream, line)) {
+        line_number++;
+        if (line.empty() or line == "\r") { continue; }
+        auto fields = split_fields(line, sep);
+        if (rows.empty()) {
+            nfields = fields.size();
+            if (nfields < static_cast<size_t>(size)) {
+                parsing_error(file_name, "line " + std::to_string(line_number) + " has " +
+                                             std::to_string(nfields) +
+                                             " fields, expected at least " + std::to_string(size));
+            }
+        } else if (fields.size() != nfields) {
+            parsing_error(file_name, "line " + std::to_string(line_number) + " has " +
+                                         std::to_string(fields.size()) + " fields, expected " +
+                                         std::to_string(nfields));
+        }
+        std::vector<double> row(size);
+        for (int i = 0; i < size; i++) {
+            row[i] = parse_number(file_name, fields[nfields - size + i]);
+        }
+        rows.push_back(std::move(row));
+    }
+    return rows;
+}
+
 inline std::tuple<std::vector<std::vector<double>>, std::vector<size_t>> open_preferences(
     std::string const &file_name, int Nstate) {
     std::vector<std::vector<double>> fitness_profiles{};
     std::vector<size_t> alloc;
 
-    std::ifstream input_stream(file_name);
-    if (!input_stream) {
-        std::cerr << "Preferences file " << file_name << " doesn't exist" << std::endl;
-        exit(1);
-    }
-
-    std::string line;
-
-    // skip the header of the file
-    getline(input_stream, line);
-    char sep{' '};
-    long nbr_col = 0;
-    for (char sep_test : std::vector<char>({' ', ',', '\t'})) {
-        long n = std::count(line.begin(), line.end(), sep_test);
-        if (n > nbr_col) {
-            sep = sep_test;
-            nbr_col = n + 1;
-        }
-    }
-    nbr_col -= Nstate;
-    if (nbr_col < 0) {
-        std::cerr << "error in preferences file " << file_name
-                  << ": header has fewer than " << Nstate << " columns\n";
-        exit(1);
-    }
-
-    while (getline(input_stream, line)) {
-        if (line.empty()) { continue; }
-        std::vector<double> fitness_profil(Nstate, 0.0);
-        std::string word;
-        std::istringstream line_stream(line);
-        unsigned counter{0};
-
-        while (getline(line_stream, word, sep)) {
-            if (counter >= nbr_col) {
-                if (counter - nbr_col >= (unsigned)Nstate) {
-                    std::cerr << "error in preferences file " << file_name
-                              << ": row has more than " << Nstate << " fitness columns\n";
-                    exit(1);
-                }
-                fitness_profil[counter - nbr_col] = stod(word);
-            }
-            counter++;
-        }
-
-        bool push = true;
+    for (auto &fitness_profil : read_numeric_rows(file_name, Nstate)) {
         if (std::abs(std::accumulate(fitness_profil.begin(), fitness_profil.end(), 0.0) - 1.0) >
             1e-5) {
-            std::cerr << "Fitness profile doesn't sum to 1 for line:\n" << line << std::endl;
-        };
+            parsing_error(file_name,
+                "fitness profile " + std::to_string(alloc.size() + 1) + " doesn't sum to 1");
+        }
+        bool push = true;
         for (size_t i = 0; i < fitness_profiles.size(); i++) {
             if (distance(fitness_profiles[i], fitness_profil) < 1e-5) {
                 push = false;
@@ -153,10 +201,11 @@ inline std::tuple<std::vector<std::vector<double>>, std::vector<size_t>> open_pr
         }
         if (push) {
             alloc.push_back(fitness_profiles.size());
-            fitness_profiles.push_back(fitness_profil);
+            fitness_profiles.push_back(std::move(fitness_profil));
         }
         assert(alloc[alloc.size() - 1] < fitness_profiles.size());
     }
+    if (alloc.empty()) { parsing_error(file_name, "no preference profile found"); }
     return std::make_tuple(fitness_profiles, alloc);
 }
 
