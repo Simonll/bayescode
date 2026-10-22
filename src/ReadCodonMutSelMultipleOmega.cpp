@@ -104,6 +104,7 @@ int main(int argc, char *argv[]) {
         for (int step = 0; step < size; step++) {
             cerr << '.';
             cr.skip(every);
+            model.UpdateMatrices();
             double mean{0.0};
             for (int site = 0; site < model.GetNsite(); site++) {
                 double val = read_args.omega_knot.getValue() ? model.GetPredictedSiteOmegaKnot(site)
@@ -142,6 +143,7 @@ int main(int argc, char *argv[]) {
         for (int step = 0; step < size; step++) {
             cerr << '.';
             cr.skip(every);
+            model.UpdateMatrices();
             for (int i = 0; i < Nnuc; i++) {
                 for (int j = 0; j < Nnuc; j++) {
                     if (i != j) {
@@ -174,6 +176,7 @@ int main(int argc, char *argv[]) {
         for (int step = 0; step < size; step++) {
             cerr << '.';
             cr.skip(every);
+            model.UpdateMatrices();
             os << model.GetPredictedRelativedS() << "\t" << model.GetPredictedRelativedN() << "\n";
             ExportTree export_tree(model.GetTree());
             for (Tree::NodeIndex node = 0; node < Tree::NodeIndex(model.GetTree().nb_nodes());
@@ -228,7 +231,8 @@ int main(int argc, char *argv[]) {
         for (int step = 0; step < size; step++) {
             cerr << '.';
             cr.skip(every);
-            
+            model.UpdateMatrices();
+
             double statMutRate, deltaS, statSubRate;
             double totalMut = 0;
             double totalSub = 0;
