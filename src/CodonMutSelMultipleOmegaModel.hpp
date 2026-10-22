@@ -1395,7 +1395,6 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         weight->LabelSwitchingMove(5, *profile_occupancy, permut);
         profile_alloc->Permute(permut);
         componentcodonfitnessarray->Permute(permut);
-        componentalloc->Permute(permut);
     }
 
     //! Gibbs resample mixture weights (based on profile_occupancy suff stats)
