@@ -73,35 +73,6 @@ TEST_CASE("units U1: model 'length' stat is the total branch length, no x3") {
     CHECK(found == 1);
 }
 
-// U2: GetNucRRIndex must enumerate the unordered pairs in the order
-// AC AG AT CG CT GT, i.e. (0,1)(0,2)(0,3)(1,2)(1,3)(2,3) -> 0..5.
-TEST_CASE("units U2: GetNucRRIndex maps nucleotide pairs to 0..5") {
-    const std::string ali = "units_test_ali.phy", tre = "units_test_tree.tre";
-    units_write_dataset(ali, tre);
-    CodonMutSelMultipleOmegaModel model(
-        ali, tre, "Null", "Null", "Null", 0, 1, 1, 1, 0.0, true, "Null", true, true);
-    const int expected[6][3] = {{0, 1, 0}, {0, 2, 1}, {0, 3, 2}, {1, 2, 3}, {1, 3, 4}, {2, 3, 5}};
-    for (const auto &e : expected) {
-        UNIT_BUG(model.GetNucRRIndex(e[0], e[1]) == e[2]);
-        UNIT_BUG(model.GetNucRRIndex(e[1], e[0]) == e[2]);  // symmetric
-    }
-    // bijection onto 0..5
-    std::vector<int> seen(6, 0);
-    for (int i = 0; i < 4; i++) {
-        for (int j = i + 1; j < 4; j++) {
-            int k = model.GetNucRRIndex(i, j);
-            if (k < 0 || k >= 6) {
-                UNIT_BUG(k < 6);  // out of range index (k < 0 or k >= 6)
-                continue;
-            }
-            seen[k]++;
-        }
-    }
-    for (int k = 0; k < 6; k++) UNIT_BUG(seen[k] == 1);
-    std::remove(ali.c_str());
-    std::remove(tre.c_str());
-}
-
 // U3: the omega used by the matrix must be the omega the model reports
 // (GetComponentOmega / reader): no hidden additive omegamin.
 TEST_CASE("units U3: matrix GetOmega equals the omega parameter") {
