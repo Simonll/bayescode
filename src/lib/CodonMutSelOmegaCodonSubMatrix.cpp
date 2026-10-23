@@ -41,7 +41,7 @@ void CodonMutSelOmegaCodonSubMatrix::ComputeArray(int i) const {
 }
 
 std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetFlowDNDS() const {
-    UpdateStationary();
+    GetStationary();  // recomputed only if the matrix was corrupted since last use
     double totdn = 0;
     double totds = 0;
     for (int i = 0; i < Nstate; i++) {
@@ -90,7 +90,7 @@ double CodonMutSelOmegaCodonSubMatrix::GetPredictedDN() const {
 }
 
 std::tuple<double, double> CodonMutSelOmegaCodonSubMatrix::GetRelativeFlowDNDS() const {
-    UpdateStationary();
+    GetStationary();  // recomputed only if the matrix was corrupted since last use
 
     double totmutdn = 0;
     double totmutds = 0;

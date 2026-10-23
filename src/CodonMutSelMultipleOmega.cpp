@@ -66,21 +66,23 @@ class CodonMutselArgParse : public BaseArgParse {
 int main(int argc, char *argv[]) {
     ChainCmdLine cmd{argc, argv, "CodonMutSelMultipleOmega", ' ', "1.1.2"};
 
-    ChainDriver *chain_driver = nullptr;
-    CodonMutSelMultipleOmegaModel *model = nullptr;
+    // owned here and declared before the components that reference them, so they are
+    // destroyed last
+    std::unique_ptr<ChainDriver> chain_driver;
+    std::unique_ptr<CodonMutSelMultipleOmegaModel> model;
 
     if (cmd.resume_from_checkpoint()) {
         std::ifstream is = cmd.checkpoint_file();
-        chain_driver = new ChainDriver(is);
-        model = new CodonMutSelMultipleOmegaModel(is);
+        chain_driver.reset(new ChainDriver(is));
+        model.reset(new CodonMutSelMultipleOmegaModel(is));
         check_restart(*model, cmd.chain_name() + ".trace");
     } else {
         InferenceAppArgParse args(cmd);
         CodonMutselArgParse codonmutsel_args(cmd);
         cmd.parse();
-        chain_driver =
-            new ChainDriver(cmd.chain_name(), args.every.getValue(), args.until.getValue());
-        model = new CodonMutSelMultipleOmegaModel(
+        chain_driver.reset(
+            new ChainDriver(cmd.chain_name(), args.every.getValue(), args.until.getValue()));
+        model.reset(new CodonMutSelMultipleOmegaModel(
             args.alignment.getValue(),
             args.treefile.getValue(),
             codonmutsel_args.profiles.getValue(),
@@ -94,7 +96,7 @@ int main(int argc, char *argv[]) {
             codonmutsel_args.flatfitness.getValue(),
             codonmutsel_args.omegaarray.getValue(),
             codonmutsel_args.flatnucstat.getValue(),
-            codonmutsel_args.flatnucrelrate.getValue());
+            codonmutsel_args.flatnucrelrate.getValue()));
     }
 
     ConsoleLogger console_logger;

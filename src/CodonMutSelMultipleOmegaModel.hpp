@@ -18,8 +18,6 @@
 #include "components/model_decl_utils.hpp"
 #include "lib/Dirichlet.hpp"
 
-#define CLASS_NAME(class_name) #class_name
-
 /**
  * \brief The mutation-selection model with constant fitness landscape over the
  * tree -- double Dirichlet process version.
@@ -31,8 +29,9 @@
  * (assumed homogeneous across sites and lineages)
  * - an array of site-specific codon fitness profiles F_ic, for site i and
  * codon c
- * - an array of site-specific omega multiplier, capturing deviations of the non-syn rate from the
- * model; this parameter is fixed to 1 by default.
+ * - a finite mixture of omegaNcat omega multipliers (omega = omega_shift + delta_omega_k),
+ * with each site allocated to one component; capturing deviations of the non-syn rate from
+ * the model. delta_omega is fixed to 1 by default (omegamode 3), or free (omegamode 0).
  *
  * Site-specific codon fitness profiles are drawn from a Dirichlet process,
  * implemented using a truncated stick-breaking process, of concentration
@@ -44,8 +43,9 @@
  * Dirichlet is parameterized by a center (a 61-freqeuncy vector) and a
  * concentration.
  *
- * Concerning the first-level stick-breaking process, by default, Ncat == 100
- * (can be changed using the -ncat option). As for baseNcat, it is equal to 1,
+ * Concerning the first-level stick-breaking process, by default, Ncat == 30
+ * (can be changed using the --ncat option; capped at 100 and at the number of
+ * sites). As for baseNcat, it is equal to 1,
  * in which case the base distribution G_0 is just a simple Dirichlet (as in
  * Rodrigue et al, 2010). This simple model is probably the one that should be
  * used by default for single-gene analyses. The more complex model with
@@ -55,16 +55,18 @@
  * the most reasonable model settings for now.
  *
  * Priors (in a single-gene context):
- * - branch lengths iid exponential, of rate lambda
- * - lambda exponential of rate 10
- * - rho and pi uniform Dirichlet
- * - omega: fixed to 1 or exponential of rate 1
- * - kappa: exponential of rate 0.1
+ * - branch lengths iid Gamma white noise around a mean of 0.1 (inverse shape 1.0, fixed
+ *   hyperparameters)
+ * - rho: Dirichlet (center uniform, inverse concentration 0.1); pi: Dirichlet (uniform center,
+ *   inverse concentration 1/4)
+ * - delta_omega_k iid Gamma(mean delta_omegahypermean, inverse shape delta_omegahyperinvshape),
+ *   or fixed to 1; both hyperparameters have an exponential prior of rate 0.1 (as coded in
+ *   DeltaOmegaHyperLogPrior); omega mixture weights: Dirichlet(omega_weight_kappa = 1)
+ * - kappa (and basekappa): exponential of rate 0.1
  * - center of base distribution: uniform Dirichlet
- * - concentration of base distribution: exponential of mean 61.
+ * - concentration of base distribution: Gamma of mean Nstate (61), inverse shape 1.
  *
  */
-
 
 //! Open a file
 inline std::vector<double> open_delta_omega_array(std::string const &file_name) {
@@ -330,6 +332,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     // sites allocated to each profile component; kept in sync with profile_alloc by
     // UpdateProfileSites() so that per-component log probs cost O(sites of k), not O(Nsite)
     std::vector<std::vector<int>> profile_sites;
+    // (dn, ds, dn/ds) computed once per trace line, see declare_interface
+    std::tuple<double, double, double> relative_flows_cache{0.0, 0.0, 0.0};
 
     // an array of codon matrices (one for each distinct aa fitness profile)
     CodonMutSelCodonMatrixBidimArray *componentcodonmatrixbidimarray;
@@ -344,10 +348,12 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     PathSuffStatArray *sitepathsuffstatarray;
 
-    // 0: free without shrinkage
-    // 2: shared across genes
-    // 3: fixed
-    // (modes 1 and 2 are not implemented for this model)
+    // Modes (same convention as the multi-gene models):
+    //   0: free without shrinkage      (implemented)
+    //   1: shrunk across genes         (NOT implemented for this single-gene model)
+    //   2: shared across genes         (NOT implemented: moves of blmode/nucmode/basemode
+    //                                   are skipped when the mode is >= 2)
+    //   3: fixed                       (implemented for omega only)
 
     // currently: free without shrinkage
     int blmode;
@@ -379,8 +385,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     //! such as specified by branch names)
     //! - inomegamode: omega fixed (3), shared across genes (2) or estimated with
     //! shrinkage across genes (1) or without shrinkage (0)
-    //! - Ncat: truncation of the first-level stick-breaking process (by default:
-    //! 100)
+    //! - Ncat: truncation of the first-level stick-breaking process (command-line
+    //! default: 30; capped at 100 and at the number of sites)
     //! - baseNcat: truncation of the second-level stick-breaking process (by
     //! default: 1)
     CodonMutSelMultipleOmegaModel(std::string indatafile, std::string intreefile,
@@ -726,6 +732,9 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         siteomegapathsuffstatarray = new OmegaPathSuffStatArray(Nsite);
         componentomegapathsuffstatarray = new OmegaPathSuffStatArray(omegaNcat);
         tracer = std::unique_ptr<Tracer>(new Tracer(*this));
+
+        // build the per-component site lists used by PathSuffStatLogProb(k) (M9)
+        UpdateProfileSites();
     }
 
     void move(int it) override { Move(); }
@@ -759,9 +768,14 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "lnL", [this]() { return GetLogLikelihood(); });
         model_stat(info, "length", [this]() { return branchlength->GetTotalLength(); });
         model_stat(info, "omega", [this]() { return GetMeanComponentOmega(); });
-        model_stat(info, "ds", [this]() { return GetPredictedRelativedS(); });
-        model_stat(info, "dn", [this]() { return GetPredictedRelativedN(); });
-        model_stat(info, "dnds", [this]() { return GetPredictedRelativedNdS(); });
+        // the three relative-flow stats share one pass over the sites: "ds" (declared first, hence
+        // written first on each trace line) computes and caches it, "dn" and "dnds" reuse it.
+        model_stat(info, "ds", [this]() {
+            relative_flows_cache = GetPredictedRelativeFlows();
+            return std::get<1>(relative_flows_cache);
+        });
+        model_stat(info, "dn", [this]() { return std::get<0>(relative_flows_cache); });
+        model_stat(info, "dnds", [this]() { return std::get<2>(relative_flows_cache); });
         model_stat(info, "nucsA", [this]() { return GetA(); });
         model_stat(info, "nucsC", [this]() { return GetC(); });
         model_stat(info, "nucsG", [this]() { return GetG(); });
@@ -1864,9 +1878,11 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return componentcodonfitnessarray->GetVal(i)[c];
     }
     const int GetProfileAlloc(int i) const { return profile_alloc->GetVal(i); }
-    const double GetOmega(int i) const { return delta_omega_array->GetVal(i); }
+    //! raw delta-omega of component i, WITHOUT the additive omega_shift
+    //! (use GetComponentOmega(i) for the omega actually used by the model)
+    const double GetDeltaOmega(int i) const { return delta_omega_array->GetVal(i); }
     const int GetOmegaAlloc(int i) const { return omega_alloc->GetVal(i); }
-    static std::string GetModelName() { return CLASS_NAME(CodonMutSelMultipleOmega); }
+    static std::string GetModelName() { return "CodonMutSelMultipleOmega"; }
 
     void GetModelStamp(std::ostream &os) const {
         os << GetModelName() << '\t';
@@ -1910,24 +1926,44 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     }
 
     CodonMutSelMultipleOmegaModel(std::istream &is) {
-        std::string model_name;
-        is >> model_name;
+        // the stamp is tab-delimited (see GetModelStamp), so that file paths may contain spaces
+        auto next_field = [&is]() {
+            std::string field;
+            if (!std::getline(is >> std::ws, field, '\t')) {
+                std::cerr << "error: truncated model stamp in checkpoint\n";
+                exit(1);
+            }
+            return field;
+        };
+        auto next_number = [&next_field](double &value) { value = std::stod(next_field()); };
+        std::string model_name = next_field();
         if (model_name != GetModelName()) {
             std::cerr << "Expected " << GetModelName() << " for model name, got " << model_name
                       << "\n";
             exit(1);
         }
-        is >> datafile >> treefile >> profilesfile;
-        is >> delta_omega_array_file;
-        is >> omegaNcat;
-        is >> omega_shift;
-        is >> baseNcat;
-        is >> Ncat;
-        is >> omegamode;
-        is >> flatfitness;
-        is >> flatnucstat;
-        is >> flatnucrelrate;
-        is >> nucstatfile >> nucrelratefile;
+        datafile = next_field();
+        treefile = next_field();
+        profilesfile = next_field();
+        delta_omega_array_file = next_field();
+        double value{0};
+        next_number(value);
+        omegaNcat = static_cast<int>(value);
+        next_number(omega_shift);
+        next_number(value);
+        baseNcat = static_cast<int>(value);
+        next_number(value);
+        Ncat = static_cast<int>(value);
+        next_number(value);
+        omegamode = static_cast<int>(value);
+        next_number(value);
+        flatfitness = value != 0;
+        next_number(value);
+        flatnucstat = value != 0;
+        next_number(value);
+        flatnucrelrate = value != 0;
+        nucstatfile = next_field();
+        nucrelratefile = next_field();
         init();
         tracer->read_line(is);
         Update();

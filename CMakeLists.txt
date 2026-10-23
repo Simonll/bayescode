@@ -80,19 +80,19 @@ set(BASE_LIBS
     tree_lib
 )
 
-# Mutation-Selection (mutselomega)
+# Codon mutation-selection with omega mixture (mutselcomega)
 add_executable(mutselcomega "src/CodonMutSelMultipleOmega.cpp")
 target_link_libraries(mutselcomega ${BASE_LIBS})
 
-# Read Mutation-Selection (readmutselomega)
+# Read codon mutation-selection with omega mixture (readmutselcomega)
 add_executable(readmutselcomega "src/ReadCodonMutSelMultipleOmega.cpp")
 target_link_libraries(readmutselcomega ${BASE_LIBS})
 
-# Mutation-Selection (mutselomega)
+# Amino-acid mutation-selection (mutselomega)
 add_executable(mutselomega "src/AAMutSelMultipleOmega.cpp")
 target_link_libraries(mutselomega ${BASE_LIBS})
 
-# Read Mutation-Selection (readmutselomega)
+# Read amino-acid mutation-selection (readmutselomega)
 add_executable(readmutselomega "src/ReadAAMutSelMultipleOmega.cpp")
 target_link_libraries(readmutselomega ${BASE_LIBS})
 
