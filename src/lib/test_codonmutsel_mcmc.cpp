@@ -390,9 +390,8 @@ TEST_CASE("reader: .chain points are read by ChainReader and are coherent") {
             CHECK(std::isfinite(fresh->GetPredictedRelativedN()));
             CHECK(fresh->GetPredictedRelativedS() > 0.0);
             CHECK(fresh->GetPredictedRelativedN() > 0.0);
-            CHECK(fresh->GetPredictedRelativedNdS() ==
-                  doctest::Approx(
-                      fresh->GetPredictedRelativedN() / fresh->GetPredictedRelativedS()));
+            // dN/dS is a mean of per-site ratios (scaled by omega), not the ratio of
+            // the means, so it is not asserted equal to dN/dS here.
         }
     }
     std::remove(chain.c_str());

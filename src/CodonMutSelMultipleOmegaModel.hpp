@@ -333,7 +333,6 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     // UpdateProfileSites() so that per-component log probs cost O(sites of k), not O(Nsite)
     std::vector<std::vector<int>> profile_sites;
     // (dn, ds, dn/ds) computed once per trace line, see declare_interface
-    std::tuple<double, double, double> relative_flows_cache{0.0, 0.0, 0.0};
 
     // an array of codon matrices (one for each distinct aa fitness profile)
     CodonMutSelCodonMatrixBidimArray *componentcodonmatrixbidimarray;
@@ -768,14 +767,9 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         model_stat(info, "lnL", [this]() { return GetLogLikelihood(); });
         model_stat(info, "length", [this]() { return branchlength->GetTotalLength(); });
         model_stat(info, "omega", [this]() { return GetMeanComponentOmega(); });
-        // the three relative-flow stats share one pass over the sites: "ds" (declared first, hence
-        // written first on each trace line) computes and caches it, "dn" and "dnds" reuse it.
-        model_stat(info, "ds", [this]() {
-            relative_flows_cache = GetPredictedRelativeFlows();
-            return std::get<1>(relative_flows_cache);
-        });
-        model_stat(info, "dn", [this]() { return std::get<0>(relative_flows_cache); });
-        model_stat(info, "dnds", [this]() { return std::get<2>(relative_flows_cache); });
+        model_stat(info, "ds", [this]() { return GetPredictedRelativedS(); });
+        model_stat(info, "dn", [this]() { return GetPredictedRelativedN(); });
+        model_stat(info, "dnds", [this]() { return GetPredictedRelativedNdS(); });
         model_stat(info, "nucsA", [this]() { return GetA(); });
         model_stat(info, "nucsC", [this]() { return GetC(); });
         model_stat(info, "nucsG", [this]() { return GetG(); });
@@ -1835,40 +1829,31 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return mean;
     }
 
-    //! compute the relative dN, dS and dN/dS in a single pass over sites, so the
-    //! three trace stats do not each recompute the full per-site flow.
-    std::tuple<double, double, double> GetPredictedRelativeFlows() const {
-        double totdn = 0, totds = 0;
-        for (int i = 0; i < GetNsite(); i++) {
-            double dn = 0, ds = 0;
-            std::tie(dn, ds) = sitecodonsubmatrixarray->GetVal(i).GetRelativeFlowDNDS();
-            // preserve original semantics: dN and dN/dS are scaled by site omega,
-            // dS is not.
-            totdn += GetSiteOmega(i) * dn;
-            totds += ds;
-        }
-        double dn = totdn / GetNsite();
-        double ds = totds / GetNsite();
-        double dnds = (ds > 0) ? dn / ds : 0.0;
-        return std::make_tuple(dn, ds, dnds);
-    }
-
     double GetPredictedRelativedNdS() const {
-        double dn = 0, ds = 0, dnds = 0;
-        std::tie(dn, ds, dnds) = GetPredictedRelativeFlows();
-        return dnds;
+        double mean = 0;
+        for (int i = 0; i < GetNsite(); i++) {
+            mean += GetSiteOmega(i) * sitecodonsubmatrixarray->GetVal(i).GetPredictedRelativeDNDS();
+        }
+        mean /= GetNsite();
+        return mean;
     }
 
     double GetPredictedRelativedN() const {
-        double dn = 0, ds = 0, dnds = 0;
-        std::tie(dn, ds, dnds) = GetPredictedRelativeFlows();
-        return dn;
+        double mean = 0;
+        for (int i = 0; i < GetNsite(); i++) {
+            mean += GetSiteOmega(i) * sitecodonsubmatrixarray->GetVal(i).GetPredictedRelativeDN();
+        }
+        mean /= GetNsite();
+        return mean;
     }
 
     double GetPredictedRelativedS() const {
-        double dn = 0, ds = 0, dnds = 0;
-        std::tie(dn, ds, dnds) = GetPredictedRelativeFlows();
-        return ds;
+        double mean = 0;
+        for (int i = 0; i < GetNsite(); i++) {
+            mean += sitecodonsubmatrixarray->GetVal(i).GetPredictedRelativeDS();
+        }
+        mean /= GetNsite();
+        return mean;
     }
     const Tree &GetTree() const { return *tree; }
     const int GetNcat() const { return Ncat; }
