@@ -17,6 +17,8 @@
 #include "lib/test_codonmutsel_mcmc.cpp"
 #include "lib/test_codonmutsel_robustness.cpp"
 
+#include "lib/test_codonmutsel_robustness2.cpp"
+
 #include "operations/test.cpp"
 
 #include "tags/test.cpp"
