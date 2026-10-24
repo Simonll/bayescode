@@ -21,6 +21,8 @@
 
 #include "lib/test_codonmutsel_corrupt.cpp"
 
+#include "lib/test_codonmutsel_lot6.cpp"
+
 #include "operations/test.cpp"
 
 #include "tags/test.cpp"
