@@ -88,6 +88,10 @@ target_link_libraries(mutselcomega ${BASE_LIBS})
 add_executable(readmutselcomega "src/ReadCodonMutSelMultipleOmega.cpp")
 target_link_libraries(readmutselcomega ${BASE_LIBS})
 
+# Standalone jump-chain sequence simulator for the codon mut-sel model (simumutselc)
+add_executable(simumutselc "src/SimuMutSelC.cpp")
+target_link_libraries(simumutselc ${BASE_LIBS})
+
 # Amino-acid mutation-selection (mutselomega)
 add_executable(mutselomega "src/AAMutSelMultipleOmega.cpp")
 target_link_libraries(mutselomega ${BASE_LIBS})
