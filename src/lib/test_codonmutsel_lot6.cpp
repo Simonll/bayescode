@@ -362,12 +362,37 @@ TEST_CASE("lot6 C: round shifts (0, 0.5, 2) still round-trip exactly") {
             CodonMutSelMultipleOmegaModel model(lot6_ali, lot6_tree, "Null", "Null", "Null",
                 0, 1, 1, 1, shift, true, "Null", true, true);
             std::ostringstream os;
-            model.ToStream(os);
-            std::istringstream is(os.str());
+                        model.ToStream(os);
+                        std::istringstream is(os.str());
             CodonMutSelMultipleOmegaModel resumed(is);
             CHECK(std::abs(resumed.GetComponentOmega(0) - resumed.GetDeltaOmega(0) - shift) <
                   1e-12);
         }
+    }
+    lot6_cleanup_dataset();
+}
+
+// ===========================================================================
+// LOT A -- GetNucRate returns the full Q entry (as AAMutSel), not the
+// symmetric exchangeability: q_ij / q_ji == pi_j / pi_i (reversibility).
+// ===========================================================================
+TEST_CASE("lot6 A: GetNucRate is the full Q entry (reversibility q_ij/q_ji = pi_j/pi_i)") {
+    lot6_write_dataset();
+    // non-uniform nucleotide frequencies: header + one line of 4 values summing to 1
+    TmpFile nucstat("lot6_nucstat.tmp", "nucstat\n0.7 0.1 0.1 0.1\n");
+    {
+        CodonMutSelMultipleOmegaModel model(lot6_ali, lot6_tree, "Null", nucstat.name, "Null",
+            0, 1, 1, 1, 0.0, true, "Null", false, true);
+        // q_ij / q_ji must equal pi_j / pi_i (GTR reversibility)
+        double q01 = model.GetNucRate(0, 1);
+        double q10 = model.GetNucRate(1, 0);
+        double pi0 = model.GetNucStat(0);
+        double pi1 = model.GetNucStat(1);
+        CHECK(q01 > 0.0);
+        CHECK(q10 > 0.0);
+        // with pi0=0.7, pi1=0.1 the ratio is 1/7, far from the symmetric 1.0
+        CHECK(std::abs(q01 / q10 - pi1 / pi0) < 1e-9);
+        CHECK(std::abs(q01 / q10 - 1.0) > 0.1);  // must NOT be symmetric
     }
     lot6_cleanup_dataset();
 }

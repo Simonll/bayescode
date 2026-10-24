@@ -1760,9 +1760,11 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     // ------------------
 
     //! return mutation rate between nucleotides from the mutation matrix
+    //! (same as AAMutSelMultipleOmegaModel::GetNucRate: the full Q entry with the
+    //! stationary frequency factor, so that q_ij != q_ji in general)
     double GetNucRate(int i, int j) const {
         nucmatrix->UpdateMatrix();
-        return nucmatrix->RelativeRate(i, j);
+        return (*nucmatrix)(i, j);
     }
 
 
