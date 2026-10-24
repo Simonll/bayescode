@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits>
 #include "Chrono.hpp"
 #include "CodonMutSelCodonMatrixBidimArray.hpp"
 #include "CodonSequenceAlignment.hpp"
@@ -31,7 +32,7 @@
  * codon c
  * - a finite mixture of omegaNcat omega multipliers (omega = omega_shift + delta_omega_k),
  * with each site allocated to one component; capturing deviations of the non-syn rate from
- * the model. delta_omega is fixed to 1 by default (omegamode 3), or free (omegamode 0).
+ * the model. delta_omega is fixed to 1 by default (omegamode 3, hence omega = omega_shift + 1), or free (omegamode 0).
  *
  * Site-specific codon fitness profiles are drawn from a Dirichlet process,
  * implemented using a truncated stick-breaking process, of concentration
@@ -553,8 +554,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         }
         if (omegaNcat > 1 and omegamode == 3) {
             std::cerr << "warning: omegancat = " << omegaNcat
-                      << " without --freeomega: all omega components are fixed to 1, so the "
-                         "components are identical\n";
+                      << " without --freeomega: all omega components are fixed to omega = "
+                      << omega_shift + 1.0 << " (omegashift + 1), so the components are identical\n";
         }
         std::cout << "Number of sites: " << Nsite << std::endl;
         std::cout << "Number of profile categories (cut-off for infinite mixture): " << Ncat
@@ -984,8 +985,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     double DeltaOmegaLogPrior(int i) const { return delta_omega_array->GetLogProb(i); }
 
     //! \brief log prior over hyperparameter of prior over omega (here,
-    //! delta_omegahyperinvshape ~ exponential of rate 10)
-    //! delta_omegahypermean ~ exponential of rate 10)
+    //! delta_omegahyperinvshape ~ exponential of rate 0.1, i.e. mean 10, and
+    //! delta_omegahypermean ~ exponential of rate 0.1; log density = -x/10 + const)
     double DeltaOmegaHyperLogPrior() const {
         return -(delta_omegahyperinvshape + delta_omegahypermean) / 10;
     }
@@ -1904,7 +1905,14 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         os << datafile << '\t' << treefile << '\t' << profilesfile << '\t';
         os << delta_omega_array_file << '\t';
         os << omegaNcat << '\t';
-        os << omega_shift << '\t';
+        {
+            // omega_shift is the only floating-point value of the stamp: write it with full
+            // precision so that it survives a resume exactly; restore the stream state since
+            // the tracer line is written on the same stream afterwards.
+            auto old_precision = os.precision(std::numeric_limits<double>::max_digits10);
+            os << omega_shift << '\t';
+            os.precision(old_precision);
+        }
         os << (basemin ? -baseNcat : baseNcat) << '\t';
         os << Ncat << '\t';
         os << omegamode << '\t';

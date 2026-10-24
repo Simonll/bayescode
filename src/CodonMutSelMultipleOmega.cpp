@@ -38,7 +38,8 @@ class CodonMutselArgParse : public BaseArgParse {
         "This option is not compatible with the option `profiles`.",
         cmd, false};
     SwitchArg freeomega{"", "freeomega",
-        "ω is allowed to vary (default ω is 1.0). "
+        "ω is allowed to vary (default: ω is fixed to omegashift + 1, i.e. 1.0 without "
+        "`omegashift`). "
         "Combined with the option `flatfitness`, we obtain the classical, ω-based codon model "
         "(Muse & Gaut). "
         "Without the option `flatfitness`, we obtain the mutation-selection codon model with a "
