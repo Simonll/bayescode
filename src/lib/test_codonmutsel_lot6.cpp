@@ -251,7 +251,7 @@ TEST_CASE("lot6 A: --ci range check rejects NaN ('-c nan')") {
 
 TEST_CASE("lot6 A: the number of points to read is checked (size == 0 must not abort)") {
     std::string blk = lot6_squash(
-        lot6_reader_block("read_args.GetSize()", "confidence_interval.getValue().empty()"));
+        lot6_reader_block("read_args.GetSize()", "cannot compute a confidence interval"));
     REQUIRE(!blk.empty());
     KNOWN_BUG(lot6_contains_any(blk, {"size<=0", "size<1", "size==0", "size>0"}));
 }

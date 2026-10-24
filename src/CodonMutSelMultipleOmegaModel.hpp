@@ -146,6 +146,9 @@ inline std::vector<double> open_delta_omega_array(std::string const &file_name) 
         }
         delta_omega_array.push_back(value);
     }
+    if (delta_omega_array.empty()) {
+        parsing_error(file_name, "no delta-omega values found; omegaNcat would be 0");
+    }
     return delta_omega_array;
 }
 
@@ -1934,7 +1937,12 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         os << datafile << '\t' << treefile << '\t' << profilesfile << '\t';
         os << delta_omega_array_file << '\t';
         os << omegaNcat << '\t';
-        os << omega_shift << '\t';
+        {
+            // omega_shift is the only floating-point value of the stamp: keep max precision
+            auto old_precision = os.precision(std::numeric_limits<double>::max_digits10);
+            os << omega_shift << '\t';
+            os.precision(old_precision);
+        }
         os << (basemin ? -baseNcat : baseNcat) << '\t';
         os << Ncat << '\t';
         os << omegamode << '\t';
