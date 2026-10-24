@@ -451,7 +451,10 @@ TEST_CASE("reader: source reads .param/.chain in the writer's order and validate
     CHECK(p_model < p_chain);
 
     // the confidence interval is validated before use
-    CHECK(pos("ci < 0.0 || ci > 1.0") != std::string::npos);
+    // (written in the NaN-rejecting form) and parsed strictly, with a guard on size == 0
+    CHECK(pos("ci >= 0.0 && ci <= 1.0") != std::string::npos);
+    CHECK(pos("is not a valid number") != std::string::npos);
+    CHECK(pos("size <= 0") != std::string::npos);
     // upper index is clamped inside the sample
     CHECK(pos("pt_up >= gene_omega.size()") != std::string::npos);
     CHECK(pos("pt_up >= omega[i].size()") != std::string::npos);

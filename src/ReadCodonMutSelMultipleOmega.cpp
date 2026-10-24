@@ -93,8 +93,22 @@ int main(int argc, char *argv[]) {
         cerr << "mean site-specific profiles in " << chain_name << ".siteprofiles\n";
         cerr << '\n';
     } else if (!read_args.confidence_interval.getValue().empty()) {
-        double ci = stod(read_args.confidence_interval.getValue());
-        if (ci < 0.0 || ci > 1.0) {
+        double ci{0.0};
+        try {
+            size_t pos = 0;
+            ci = stod(read_args.confidence_interval.getValue(), &pos);
+            if (pos != read_args.confidence_interval.getValue().size()) { throw invalid_argument(""); }
+        } catch (std::exception const &) {
+            std::cerr << "error: confidence_interval '" << read_args.confidence_interval.getValue()
+                      << "' is not a valid number\n";
+            exit(1);
+        }
+        if (size <= 0) {
+            std::cerr << "error: no points to read (size = " << size
+                      << "); cannot compute a confidence interval\n";
+            exit(1);
+        }
+        if (!(ci >= 0.0 && ci <= 1.0)) {
             std::cerr << "error: confidence_interval must be in [0,1], got " << ci << "\n";
             exit(1);
         }

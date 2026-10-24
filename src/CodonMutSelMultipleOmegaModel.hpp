@@ -68,22 +68,6 @@
  *
  */
 
-//! Open a file
-inline std::vector<double> open_delta_omega_array(std::string const &file_name) {
-    std::vector<double> delta_omega_array{};
-    std::ifstream input_stream(file_name);
-    if (!input_stream) {
-        std::cerr << "Delta-omega array file " << file_name << " doesn't exist" << std::endl;
-        exit(1);
-    }
-
-    std::string line;
-    while (getline(input_stream, line)) {
-        if (!line.empty()) { delta_omega_array.push_back(stod(line)); }
-    }
-    return delta_omega_array;
-}
-
 inline double distance(std::vector<double> const &v1, std::vector<double> const &v2) {
     double tot = 0;
     assert(v1.size() == v2.size());
@@ -139,6 +123,31 @@ inline double parse_number(std::string const &file_name, std::string const &word
     return value;
 }
 
+//! Read delta-omega values, one per line; each must be a finite number > 0
+inline std::vector<double> open_delta_omega_array(std::string const &file_name) {
+    std::vector<double> delta_omega_array{};
+    std::ifstream input_stream(file_name);
+    if (!input_stream) {
+        std::cerr << "Delta-omega array file " << file_name << " doesn't exist" << std::endl;
+        exit(1);
+    }
+
+    std::string line;
+    size_t line_number = 0;
+    while (getline(input_stream, line)) {
+        line_number++;
+        if (line.empty() or line == "\r") { continue; }
+        double value = parse_number(file_name, line);
+        // omega = 0 gives log(0) and a division by omega in GetOmega()
+        if (!(value > 0.0)) {
+            parsing_error(file_name, "line " + std::to_string(line_number) + ": omega value '" +
+                                         line + "' must be strictly positive");
+        }
+        delta_omega_array.push_back(value);
+    }
+    return delta_omega_array;
+}
+
 /**
  * Read the last `size` fields of each non-empty line after the header. Leading columns
  * (row names, ...) are ignored. All rows must have the same number of fields, at least `size`.
@@ -182,6 +191,8 @@ inline std::vector<std::vector<double>> read_numeric_rows(
     return rows;
 }
 
+//! The first line of the file is always treated as a header and skipped (see read_numeric_rows):
+//! a headerless file silently loses its first profile. Input files are expected to have a header.
 inline std::tuple<std::vector<std::vector<double>>, std::vector<size_t>> open_preferences(
     std::string const &file_name, int Nstate) {
     std::vector<std::vector<double>> fitness_profiles{};
@@ -192,6 +203,14 @@ inline std::tuple<std::vector<std::vector<double>>, std::vector<size_t>> open_pr
             1e-5) {
             parsing_error(file_name,
                 "fitness profile " + std::to_string(alloc.size() + 1) + " doesn't sum to 1");
+        }
+        for (double fitness : fitness_profil) {
+            // log(fitness + 1e-8) is NaN for a negative fitness, and a null one is degenerate
+            if (!(fitness > 0.0)) {
+                parsing_error(file_name, "fitness profile " + std::to_string(alloc.size() + 1) +
+                                             " contains a non-positive value (" +
+                                             std::to_string(fitness) + ")");
+            }
         }
         bool push = true;
         for (size_t i = 0; i < fitness_profiles.size(); i++) {
@@ -499,8 +518,10 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 loaded_profiles_allocation = true;
 
             } else {
-                std::cout << "Input preferences profiles file has a smaller number of profiles "
-                             "than the alignment, hence site allocations are computed."
+                std::cout << "Input preferences profiles file has " << std::get<1>(prefs).size()
+                          << " lines, which differs from the number of sites (" << Nsite
+                          << "): the " << Ncat
+                          << " distinct profiles are loaded and site allocations are computed."
                           << std::endl;
             }
         }
