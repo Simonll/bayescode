@@ -931,6 +931,12 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             if (!clamp_nucstat) { total += NucStatLogPrior(); }
             if (!clamp_nucrelrate) { total += NucRelRateLogPrior(); }
         }
+        // Profiles (and their base distribution) move iff !clamp_profiles; the mixture weights and
+        // the site allocations move iff !clamp_profiles_allocation (ResampleProfileAlloc,
+        // ResampleProfileWeights, MoveKappa), which is independent of clamp_profiles: loading fewer
+        // profiles than sites clamps the profiles but leaves the allocation free.
+        // (profile weights/allocation terms are kept whenever either part is free, so that the
+        // value is unchanged in the case Ncat == 1 with free profiles.)
         if (!clamp_profiles) {
             if (basemode < 2) {
                 if (baseNcat > 1) {
@@ -939,12 +945,15 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 }
                 total += BaseLogPrior();
             }
+            total += CodonLogPrior();
+            // component allocation to the base mixture: only moves with the base (MoveBase)
+            total += componentalloc->GetLogProb();
+        }
+        if (!clamp_profiles || !clamp_profiles_allocation) {
             total += StickBreakingHyperLogPrior();
             total += StickBreakingLogPrior();
-            total += CodonLogPrior();
-            // allocations given the mixture weights
+            // site allocations given the mixture weights
             total += profile_alloc->GetLogProb();
-            total += componentalloc->GetLogProb();
         }
         if (omegamode < 2) { total += DeltaOmegaLogProb(); }
         // omega mixture: Dirichlet prior on the weights + allocations given the weights
