@@ -23,6 +23,8 @@
 
 #include "lib/test_codonmutsel_lot6.cpp"
 
+#include "lib/test_codonmutsel_normflux.cpp"
+
 #include "operations/test.cpp"
 
 #include "tags/test.cpp"

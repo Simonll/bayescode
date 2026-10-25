@@ -49,13 +49,15 @@ static string next_line(istream &is, const char *what) {
 int main(int argc, char **argv) {
     if (argc < 3) {
         cerr << "usage: " << argv[0]
-             << " <file.pvalues> <out_prefix> [sample_index=0] [seed=-1] [nrep=1]\n";
+             << " <file.pvalues> <out_prefix> [sample_index=0] [seed=-1] [nrep=1] [normalise=0]\n";
         return 1;
     }
     string pvalues = argv[1], prefix = argv[2];
     int sample = argc > 3 ? stoi(argv[3]) : 0;
     int seed = argc > 4 ? stoi(argv[4]) : -1;
     int nrep = argc > 5 ? stoi(argv[5]) : 1;
+    // normalise=1 builds the codon matrices with innormalise=true (flux 1 per unit of time)
+    bool normalise = argc > 6 && stoi(argv[6]) != 0;
     Random::InitRandom(seed);
 
     ifstream is(pvalues);
@@ -138,7 +140,7 @@ int main(int argc, char **argv) {
         auto &m = matrices[make_pair(p, o)];
         if (!m) {
             m.reset(new CodonMutSelOmegaCodonSubMatrix(
-                &statespace, &nucmatrix, profiles[p], omegas[o], false));
+                &statespace, &nucmatrix, profiles[p], omegas[o], normalise));
         }
         sitemat[i] = m.get();
     }
