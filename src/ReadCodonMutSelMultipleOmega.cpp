@@ -27,6 +27,11 @@ class ReadCodonMutSelMultipleOmegaArgParse : public ReadArgParse {
         "equilibrium from the fitness profiles (instead of ω). "
         "To use combined with the option `confidence_interval`.",
         cmd};
+    SwitchArg map_sub{"", "map",
+        "Posterior stochastic mapping of the substitutions on the OBSERVED data "
+        "(phylobayes-mpi `-map`): writes <chain>_map_<i>.subs (Nsub, Nsub per codon) for each "
+        "sampled point. Distinct from `--ppred`, which counts on simulated data.",
+        cmd};
     SwitchArg selection_coef_distribution{"d", "distribution", "Computes selection coefficients", cmd};
     SwitchArg prepare_files_for_simulation{"", "for_simulation", "Prepare files for jump chain simulations", cmd};
     SwitchArg site_specific{"s", "ss",
@@ -66,6 +71,18 @@ int main(int argc, char *argv[]) {
             string prefix = chain_name + "_" + "ppred_" + to_string(i);
             long nsub = model.PostPredCountSub(prefix + ".ali");
             ofstream subs(prefix + ".subs");
+            subs << "#Nsub\tNsub_per_codon\n"
+                 << nsub << '\t' << static_cast<double>(nsub) / model.GetNsite() << '\n';
+        }
+        cerr << '\n';
+    } else if (read_args.map_sub.getValue()) {
+        // phylobayes-mpi `-map` (PhyloProcess::ReadMap): for each posterior sample, stochastic
+        // mapping of the substitutions conditional on the observed data, then count them.
+        for (int i = 0; i < size; i++) {
+            cerr << '.';
+            cr.skip(every);
+            long nsub = model.MapCountSub();
+            ofstream subs(chain_name + "_map_" + to_string(i) + ".subs");
             subs << "#Nsub\tNsub_per_codon\n"
                  << nsub << '\t' << static_cast<double>(nsub) / model.GetNsite() << '\n';
         }

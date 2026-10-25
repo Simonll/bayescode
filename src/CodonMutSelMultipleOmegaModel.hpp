@@ -933,6 +933,17 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return phyloprocess->PostPredSampleCountSub(name);
     }
 
+    //! stochastic mapping on the observed data (phylobayes-mpi `-map`): resamples the substitution
+    //! history conditional on the data and the current parameters, returns the total number of
+    //! substitutions (all sites, all non-root branches)
+    long MapCountSub() {
+        UpdateBaseOccupancies();
+        UpdateOmegaOccupancies();
+        UpdateProfileOccupancies();
+        UpdateMatrices();
+        return phyloprocess->MapCountSub();
+    }
+
     //-------------------
     // Priors and likelihood
     //-------------------

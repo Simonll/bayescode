@@ -491,6 +491,18 @@ long PhyloProcess::PostPredSampleCountSub(string name, bool rootprior) {
     return nsub;
 }
 
+long PhyloProcess::MapCountSub() {
+    DrawSites(1.0);
+    ResampleSub();
+    long nsub = 0;
+    for (int i = 0; i < GetNsite(); i++) {
+        for (Tree::NodeIndex node = 0; node < Tree::NodeIndex(tree->nb_nodes()); node++) {
+            if (!tree->is_root(node)) { nsub += pathmap[node][i]->GetNsub(); }
+        }
+    }
+    return nsub;
+}
+
 void PhyloProcess::PostPredSample(int site, bool rootprior) {
     if (!rootprior) { Pruning(GetRoot(), site); }
     PriorSample(GetRoot(), site, rootprior);

@@ -157,6 +157,13 @@ class PhyloProcess {
     //! draw from the forward process.
     long PostPredSampleCountSub(std::string name, bool rootprior = true);
 
+    //! stochastic mapping on the OBSERVED data (phylobayes-mpi `-map`): resamples the node states
+    //! (conditional on the data, Pruning + PruningAncestral) and the substitution paths of all
+    //! sites under the current parameters (ResampleSub()), then returns the total number of
+    //! substitutions over all sites and non-root branches (cf. phylobayes-mpi
+    //! SampleSubstitutionMappings + GlobalCountMapping).
+    long MapCountSub();
+
     //! get data from tips (after simulation) and put in into sequence alignment
     void GetLeafData(SequenceAlignment *data);
 
