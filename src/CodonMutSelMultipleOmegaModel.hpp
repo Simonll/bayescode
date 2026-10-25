@@ -923,6 +923,16 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         phyloprocess->PostPredSample(name);
     }
 
+    //! posterior predictive simulation as PostPred, also returns the total number of
+    //! substitutions (all sites, all branches) of the simulated history
+    long PostPredCountSub(std::string name) {
+        UpdateBaseOccupancies();
+        UpdateOmegaOccupancies();
+        UpdateProfileOccupancies();
+        UpdateMatrices();
+        return phyloprocess->PostPredSampleCountSub(name);
+    }
+
     //-------------------
     // Priors and likelihood
     //-------------------

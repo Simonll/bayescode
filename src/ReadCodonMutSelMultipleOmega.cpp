@@ -58,10 +58,16 @@ int main(int argc, char *argv[]) {
     cerr << size << " points to read\n";
 
     if (read_args.GetPpred()) {
+        // Corresponds to phylobayes-mpi type 1 (plain ppred, simulated data are written);
+        // additionally counts the substitutions of each simulated history.
         for (int i = 0; i < size; i++) {
             cerr << '.';
             cr.skip(every);
-            model.PostPred(chain_name + "_" + "ppred_" + to_string(i) + ".ali");
+            string prefix = chain_name + "_" + "ppred_" + to_string(i);
+            long nsub = model.PostPredCountSub(prefix + ".ali");
+            ofstream subs(prefix + ".subs");
+            subs << "#Nsub\tNsub_per_codon\n"
+                 << nsub << '\t' << static_cast<double>(nsub) / model.GetNsite() << '\n';
         }
         cerr << '\n';
     } else if (read_args.site_specific.getValue()) {

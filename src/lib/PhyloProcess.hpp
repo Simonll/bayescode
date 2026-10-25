@@ -149,6 +149,14 @@ class PhyloProcess {
     //! posterior predictive resampling under current parameter configuration
     void PostPredSample(std::string name, bool rootprior = true);  // unclamped Nielsen
 
+    //! same as PostPredSample(name, rootprior) (same alignment written), and returns the total
+    //! number of substitutions over all sites and non-root branches of the simulated history.
+    //! PriorSample only draws end-points (DrawFiniteTime) and does not keep paths, so the
+    //! paths are obtained by stochastic mapping conditional on the simulated node states
+    //! (same technique as the path resampling of the MCMC); jointly (states, paths) is an exact
+    //! draw from the forward process.
+    long PostPredSampleCountSub(std::string name, bool rootprior = true);
+
     //! get data from tips (after simulation) and put in into sequence alignment
     void GetLeafData(SequenceAlignment *data);
 
