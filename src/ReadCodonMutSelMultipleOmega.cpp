@@ -32,6 +32,11 @@ class ReadCodonMutSelMultipleOmegaArgParse : public ReadArgParse {
         "(phylobayes-mpi `-map`): writes <chain>_map_<i>.subs (Nsub, Nsub per codon) for each "
         "sampled point. Distinct from `--ppred`, which counts on simulated data.",
         cmd};
+    SwitchArg matrix_diag{"", "diag",
+        "Diagnostic: writes <chain>_diag_<i>.txt (norm = 2*norm*3 of the nucleotide matrix, "
+        "stationary flux of the GTR matrix, site-averaged stationary flux of the codon matrix) "
+        "for each sampled point.",
+        cmd};
     SwitchArg selection_coef_distribution{"d", "distribution", "Computes selection coefficients", cmd};
     SwitchArg prepare_files_for_simulation{"", "for_simulation", "Prepare files for jump chain simulations", cmd};
     SwitchArg site_specific{"s", "ss",
@@ -85,6 +90,18 @@ int main(int argc, char *argv[]) {
             ofstream subs(chain_name + "_map_" + to_string(i) + ".subs");
             subs << "#Nsub\tNsub_per_codon\n"
                  << nsub << '\t' << static_cast<double>(nsub) / model.GetNsite() << '\n';
+        }
+        cerr << '\n';
+    } else if (read_args.matrix_diag.getValue()) {
+        // diagnostic: normalisation factor and stationary fluxes of the nucleotide / codon matrices
+        for (int i = 0; i < size; i++) {
+            cerr << '.';
+            cr.skip(every);
+            model.UpdateMatrices();
+            double norm, flux_gtr, flux_codon;
+            model.GetMatrixDiagnostics(norm, flux_gtr, flux_codon);
+            ofstream os(chain_name + "_diag_" + to_string(i) + ".txt");
+            os << setprecision(17) << norm << '\t' << flux_gtr << '\t' << flux_codon << '\n';
         }
         cerr << '\n';
     } else if (read_args.site_specific.getValue()) {

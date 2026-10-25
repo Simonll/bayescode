@@ -1788,6 +1788,27 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         return (*nucmatrix)(i, j);
     }
 
+    //! diagnostic: norm = GTRSubMatrixCodon::GetRate() (2*norm*3), flux_gtr = sum_i pi_i (-Q_ii)
+    //! of the nucleotide matrix, flux_codon = site-averaged sum_c pi_c (-Q_cc) of the codon matrices
+    //! (call UpdateMatrices() beforehand so that the matrices reflect the current parameters)
+    void GetMatrixDiagnostics(double &norm, double &flux_gtr, double &flux_codon) const {
+        nucmatrix->UpdateMatrix();
+        // GetRate is protected in GTRSubMatrixCodon but public (virtual) in SubMatrix
+        norm = static_cast<const SubMatrix *>(nucmatrix)->GetRate();
+        flux_gtr = 0;
+        for (int i = 0; i < Nnuc; i++) {
+            flux_gtr -= nucmatrix->Stationary(i) * (*nucmatrix)(i, i);
+        }
+        int Nstate = GetCodonStateSpace()->GetNstate();
+        flux_codon = 0;
+        for (int site = 0; site < GetNsite(); site++) {
+            const CodonMutSelOmegaCodonSubMatrix &m = sitecodonsubmatrixarray->GetVal(site);
+            m.UpdateMatrix();
+            for (int c = 0; c < Nstate; c++) { flux_codon -= m.Stationary(c) * m(c, c); }
+        }
+        flux_codon /= GetNsite();
+    }
+
 
     //! return number of occupied components in first-level mixture (mixture of
     //! codon fitness profiles)
