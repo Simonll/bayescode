@@ -1,6 +1,8 @@
 #include <cmath>
 #include <fstream>
+#include <iomanip>
 #include <limits>
+#include <sstream>
 #include "AACodonMutSelMultipleOmegaModel.hpp"
 #include "components/ChainDriver.hpp"
 #include "components/ChainReader.hpp"
@@ -301,13 +303,18 @@ int main(int argc, char *argv[]) {
         for (int step = 0; step < size; step++) {
             cerr << '.';
             cr.skip(every);
+            model.UpdateMatrices();
             os << model.GetPredictedRelativedS() << "\t" << model.GetPredictedRelativedN() << "\n";
             ExportTree export_tree(model.GetTree());
             for (Tree::NodeIndex node = 0; node < Tree::NodeIndex(model.GetTree().nb_nodes());
                  node++) {
                 if (!model.GetTree().is_root(node)) {
-                    // 3x: per coding site (and not per nucleotide site)
-                    export_tree.set_tag(node, "length", to_string(3 * model.GetBranchLength(node)));
+                    // 3x: per coding site (and not per nucleotide site).
+                    // to_string would print 6 fixed decimals, flattening tiny branches to 0.
+                    std::ostringstream length_stream;
+                    length_stream << std::setprecision(std::numeric_limits<double>::max_digits10)
+                                  << 3 * model.GetBranchLength(node);
+                    export_tree.set_tag(node, "length", length_stream.str());
                 }
             }
             os << export_tree.as_string() << '\n';
@@ -326,9 +333,9 @@ int main(int argc, char *argv[]) {
             for (int i = 0; i < model.GetNsite(); i++) {
                 os << model.GetProfileAlloc(i) << (i != model.GetNsite() - 1 ? '\t' : '\n');
             }
-            // raw delta-omega of each component (the simulator adds omega_shift from the stamp)
+            // full omega (omega_shift + delta) of each component, as read back by the simulator
             for (int i = 0; i < model.GetOmegaNcat(); i++) {
-                os << model.GetOmega(i) << (i != model.GetOmegaNcat() - 1 ? '\t' : '\n');
+                os << model.GetComponentOmega(i) << (i != model.GetOmegaNcat() - 1 ? '\t' : '\n');
             }
             for (int i = 0; i < model.GetNsite(); i++) {
                 os << model.GetOmegaAlloc(i) << (i != model.GetNsite() - 1 ? '\t' : '\n');
