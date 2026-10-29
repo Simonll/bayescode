@@ -64,7 +64,8 @@ class AACodonMutSelCodonMatrixBidimArray : public BidimArray<SubMatrix>,
         for (int i = 0; i < GetNrow(); i++) {
             for (int j = 0; j < GetNcol(); j++) {
                 matrixarray[i][j] = new AACodonMutSelOmegaCodonSubMatrix(codonstatespace,
-                    nucmatrix, GetCodonFitness(), aafitnessarray->GetVal(i), GetOmega(j), true);  // normalised: branch lengths in subs/site, as AAMutSel
+                    nucmatrix, GetCodonFitness(), aafitnessarray->GetVal(i), GetOmega(j),
+                    false);  // not normalised: branch lengths in mutation units, as mutselc/LFP
             }
         }
     }

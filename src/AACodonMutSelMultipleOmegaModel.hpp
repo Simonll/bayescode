@@ -314,7 +314,7 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
 
     std::vector<double> nucstat;
     std::vector<double> nucrelrate;
-    GTRSubMatrix *nucmatrix;
+    GTRSubMatrixCodon *nucmatrix;
 
     // codonfitness hyperparameters
     std::vector<double> codonfitnesshypercenter;
@@ -590,7 +590,7 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
             clamp_nucstat = true;
         }
 
-        nucmatrix = new GTRSubMatrix(Nnuc, nucrelrate, nucstat, true);
+        nucmatrix = new GTRSubMatrixCodon(Nnuc, nucrelrate, nucstat, true);
 
         // codonfitness
         codonfitness.assign(Nstate, 0);
@@ -1759,7 +1759,9 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
     //! return mutation rate between nucleotides from the mutation matrix
     double GetNucRate(int i, int j) const {
         nucmatrix->UpdateMatrix();
-        return nucmatrix->RelativeRate(i, j);
+        // full Q entry (nucrate * pi_j), not the symmetric exchangeability: matches the
+        // --nuc output of the other mut-sel readers (see mutselc fix d57d4b4)
+        return (*nucmatrix)(i, j);
     }
 
 

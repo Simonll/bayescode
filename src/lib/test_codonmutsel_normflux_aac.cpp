@@ -75,34 +75,27 @@ TEST_CASE("normflux AAC: codon flux of the AAC matrix vs LFP mutation scale") {
     auto aa = aacfx_aa20(0.3);
     auto codon = aacfx_codon61(0.3);
 
-    // Innnormalise=false built on the *mutation*-normalised GTR (mutselc/LFP convention):
-    // the flux is the real substitution flux (< 1 under selection).
+    // The AAC model now builds its codon matrix with innormalise=false on a
+    // GTRSubMatrixCodon (2*norm*3 mutation scale), exactly as mutselc and LFP:
+    // the flux is the real substitution flux (< 1 under purifying selection).
     AACodonMutSelOmegaCodonSubMatrix sel_mut(&ss, &nuc.codon, codon, aa, 1.0, false);
-    // Innnormalise=true (the value used by the AAC model): Normalise() forces the
-    // substitution flux to 1 -> branch lengths in substitutions.
+    // innormalise=true would force the substitution flux to 1 (substitution units).
     AACodonMutSelOmegaCodonSubMatrix sel_subs(&ss, &nuc.codon, codon, aa, 1.0, true);
-    // Also on the plain GTR (the AAC model's nucmatrix): innormalise=true.
-    AACodonMutSelOmegaCodonSubMatrix sel_plain(&ss, &nuc.plain, codon, aa, 1.0, true);
 
     double f_mut = aacfx_flux(sel_mut, 61);
     double f_subs = aacfx_flux(sel_subs, 61);
-    double f_plain = aacfx_flux(sel_plain, 61);
 
-    std::printf("[normflux AAC] flux false/mutation-scale %.4f | true/substitution-scale %.4f | "
-                "true on plain GTR %.4f\n",
-        f_mut, f_subs, f_plain);
+    std::printf("[normflux AAC] flux false/mutation-scale (model) %.4f | true/substitution-scale %.4f\n",
+        f_mut, f_subs);
 
-    // innormalise=true always forces flux = 1 (substitution units)
-    CHECK(f_subs == doctest::Approx(1.0).epsilon(1e-6));
-    // on the plain GTR it is also 1 (the AAC model normalises per-codon)
-    CHECK(f_plain == doctest::Approx(1.0).epsilon(1e-6));
-    // on the mutation-normalised GTR *without* extra normalisation, the flux is the real
-    // substitution flux, < 1 under purifying selection
+    // model convention (innormalise=false on GTRSubMatrixCodon): real substitution flux < 1
     CHECK(f_mut != doctest::Approx(1.0).epsilon(1e-3));
     CHECK(f_mut < 1.0);
+    CHECK(f_mut > 0.1);
+    // innormalise=true would force flux = 1
+    CHECK(f_subs == doctest::Approx(1.0).epsilon(1e-6));
 
-    // The scale factor between the two conventions: LFP (mutation scale) reads branch
-    // lengths as blength*flux_mut, so if the model uses substitution units the simulated
-    // Nsub per codon on a branch of length blength would be blength*1 instead of blength*f_mut.
+    // In mutation units (LFP/mutselc), a branch of length blength carries blength*f_mut
+    // substitutions per codon. This is the scale LFP recovers.
     std::printf("[normflux AAC] substitution/mutation scale factor = %.4f\n", 1.0 / f_mut);
 }
