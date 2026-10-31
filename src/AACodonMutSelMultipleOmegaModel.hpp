@@ -1170,10 +1170,11 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
                 if (!clamp_nucrelrate) { MoveNucRR(); }
                 if (!clamp_nucstat and !clamp_codonfitness) {
                     MoveCodonNucStat();
+                    MoveCodonFull();
                 } else if (!clamp_nucstat) {
                     MoveNucStat();
                 } else if (!clamp_codonfitness) {
-                    MoveCodon();
+                    MoveCodonFull();
                 }
             }
 
@@ -1278,6 +1279,114 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
             &AACodonMutSelMultipleOmega::UpdateMatrices, this);
         Move::Profile(codonfitness, 0.001, 3, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
             &AACodonMutSelMultipleOmega::UpdateMatrices, this);
+    }
+
+    //! MH move on codonfitness: additive compensated move on n pairs of entries
+    double MoveCodonAddPair(double tuning, int n, int nrep) {
+        double nacc = 0;
+        double ntot = 0;
+        std::vector<double> bk(codonfitness.size(), 0);
+        for (int rep = 0; rep < nrep; rep++) {
+            bk = codonfitness;
+            double deltalogprob = -CodonFitnessLogPrior() - PathSuffStatLogProb();
+            deltalogprob += Random::ProfileProposeMove(codonfitness, Nstate, tuning, n);
+            UpdateMatrices();
+            deltalogprob += CodonFitnessLogPrior() + PathSuffStatLogProb();
+
+            int accepted = (log(Random::Uniform()) < deltalogprob);
+            if (accepted) {
+                nacc++;
+            } else {
+                codonfitness = bk;
+                UpdateMatrices();
+            }
+            ntot++;
+        }
+        return nacc / ntot;
+    }
+
+    //! schedule of additive pair moves (as CompMoveCodonProfiles in mutselc)
+    void MoveCodonAddPairSchedule() {
+        MoveCodonAddPair(0.3, 2, 1);
+        MoveCodonAddPair(0.15, 4, 1);
+        MoveCodonAddPair(0.07, 8, 1);
+        MoveCodonAddPair(0.03, 16, 1);
+        MoveCodonAddPair(0.01, 32, 1);
+        MoveCodonAddPair(1, 2, 1);
+    }
+
+    //! helper function: log density of Nstate gammas
+    double GammaCodonLogPrior(
+        const std::vector<double> &x, const std::vector<double> &codoncenter, double codonconc) {
+        double total = 0;
+        for (int l = 0; l < Nstate; l++) {
+            total += (codonconc * codoncenter[l] - 1) * log(x[l]) - x[l] -
+                     Random::logGamma(codonconc * codoncenter[l]);
+        }
+        return total;
+    }
+
+    //! MH move on codonfitness: multiplicative move (using the Gamma
+    //! representation of the Dirichlet)
+    double MoveCodonGamma(double tuning, int nrep) {
+        double nacc = 0;
+        double ntot = 0;
+        double codonconc = 1.0 / codonfitnesshyperinvconc;
+        const std::vector<double> &codoncenter = codonfitnesshypercenter;
+
+        std::vector<double> x(Nstate, 0);
+        double z = Random::sGamma(codonconc);
+        for (int l = 0; l < Nstate; l++) { x[l] = z * codonfitness[l]; }
+
+        double bkz = z;
+        std::vector<double> bkx = x;
+        std::vector<double> bkcodon = codonfitness;
+
+        for (int rep = 0; rep < nrep; rep++) {
+            double deltalogprob =
+                -GammaCodonLogPrior(x, codoncenter, codonconc) - PathSuffStatLogProb();
+
+            double loghastings = 0;
+            z = 0;
+            for (int l = 0; l < Nstate; l++) {
+                double m = tuning * (Random::Uniform() - 0.5);
+                x[l] *= exp(m);
+                z += x[l];
+                loghastings += m;
+            }
+            for (int l = 0; l < Nstate; l++) {
+                codonfitness[l] = x[l] / z;
+                if (codonfitness[l] < 1e-50) { codonfitness[l] = 1e-50; }
+            }
+
+            deltalogprob += loghastings;
+
+            UpdateMatrices();
+
+            deltalogprob += GammaCodonLogPrior(x, codoncenter, codonconc) + PathSuffStatLogProb();
+
+            int accepted = (log(Random::Uniform()) < deltalogprob);
+            if (accepted) {
+                nacc++;
+                bkcodon = codonfitness;
+                bkx = x;
+                bkz = z;
+            } else {
+                codonfitness = bkcodon;
+                x = bkx;
+                z = bkz;
+                UpdateMatrices();
+            }
+            ntot++;
+        }
+        return nacc / ntot;
+    }
+
+    //! full move schedule on codonfitness: additive pairs then multiplicative
+    void MoveCodonFull() {
+        MoveCodonAddPairSchedule();
+        MoveCodonGamma(3.0, 1);
+        MoveCodonGamma(1.0, 1);
     }
 
     //! MCMC module for the mixture amino-acid fitness profiles
