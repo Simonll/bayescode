@@ -26,6 +26,8 @@
 #include "lib/test_codonmutsel_normflux.cpp"
 #include "lib/test_codonmutsel_normflux_aac.cpp"
 
+#include "lib/test_senca_reversibility.cpp"
+
 #include "operations/test.cpp"
 
 #include "tags/test.cpp"
