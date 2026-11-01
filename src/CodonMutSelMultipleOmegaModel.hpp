@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdlib>
 #include <limits>
 #include "Chrono.hpp"
 #include "CodonMutSelCodonMatrixBidimArray.hpp"
@@ -1182,8 +1183,21 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     //! complete MCMC move schedule
     double Move() {
-        ResampleSub(1.0);
-        MoveParameters(30);
+        // Experimental: default = 1 ResampleSub + 30 parameter moves. If env
+        // BAYESCODE_RESAMPLE_BLOCKS=K>0, do K independent mapping resamples each
+        // followed by 30/K parameter moves (same budget, length drifts faster).
+        int K = 0;
+        if (const char* e = std::getenv("BAYESCODE_RESAMPLE_BLOCKS")) { K = std::atoi(e); }
+        if (K > 0) {
+            int nper = 30 / K; if (nper < 1) { nper = 1; }
+            for (int b = 0; b < K; b++) {
+                ResampleSub(1.0);
+                MoveParameters(nper);
+            }
+        } else {
+            ResampleSub(1.0);
+            MoveParameters(30);
+        }
         return 1.0;
     }
 
