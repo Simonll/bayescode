@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdlib>
 #include <limits>
 #include "AcceptanceTracker.hpp"
 #include "AACodonMutSelCodonMatrixBidimArray.hpp"
@@ -1215,8 +1216,23 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
 
     //! complete MCMC move schedule
     double Move() {
-        ResampleSub(1.0);
-        MoveParameters(30);
+        // Experimental: by default one ResampleSub then 30 parameter moves
+        // (the historical BayesCode schedule). If the env var
+        // BAYESCODE_RESAMPLE_BLOCKS is K>0, do K independent mapping resamples,
+        // each followed by 30/K parameter moves (same parameter-move budget,
+        // more mapping updates -> branch lengths drift faster).
+        int K = 0;
+        if (const char* e = std::getenv("BAYESCODE_RESAMPLE_BLOCKS")) { K = std::atoi(e); }
+        if (K > 0) {
+            int nper = std::max(30 / K, 1);
+            for (int b = 0; b < K; b++) {
+                ResampleSub(1.0);
+                MoveParameters(nper);
+            }
+        } else {
+            ResampleSub(1.0);
+            MoveParameters(30);
+        }
         accept_iter++;
         AcceptanceTracker::get().periodicReport(accept_iter);
         return 1.0;
