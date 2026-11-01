@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <limits>
 #include "AcceptanceTracker.hpp"
 #include "AACodonMutSelCodonMatrixBidimArray.hpp"
@@ -324,6 +325,15 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
     // codonfitness
     std::vector<double> codonfitness;
 
+    // SENCA-hybrid codon layer: `codonfitness` holds theta_c, the relative preference of codon c
+    // among the synonymous codons of its amino acid (sum over syn(a) of theta_c = 1 for every a).
+    // The substitution matrices use codonweight_c = n_a * theta_c (n_a = degeneracy of a), whose
+    // mean is 1 within each AA: flat theta (theta_c = 1/n_a) <=> codonweight = 1 <=> plain AA
+    // mutation-selection model. codonweight is derived from codonfitness (UpdateCodonWeights).
+    std::vector<double> codonweight;
+    // codon indices of each synonymous group (one group per AA present in the code)
+    std::vector<std::vector<int>> synonymousgroups;
+
     // MCMC iteration counter (for periodic acceptance reporting)
     int accept_iter{0};
 
@@ -614,13 +624,39 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
             clamp_codonfitness = true;
         }
 
-        Random::DirichletSample(codonfitness, codonfitnesshypercenter, ((double)Nstate));
+        // synonymous groups from the genetic code (CodonStateSpace::Translation: codon -> AA)
+        synonymousgroups.assign(Naa, std::vector<int>());
+        for (int c = 0; c < Nstate; c++) {
+            synonymousgroups[GetCodonStateSpace()->Translation(c)].push_back(c);
+        }
+        synonymousgroups.erase(
+            std::remove_if(synonymousgroups.begin(), synonymousgroups.end(),
+                [](const std::vector<int> &g) { return g.empty(); }),
+            synonymousgroups.end());
+
+        // prior draw: independent uniform Dirichlet(1,..,1) on each synonymous group
+        // (single-codon AAs: theta = 1, no free parameter)
+        for (auto const &g : synonymousgroups) {
+            std::vector<double> sub(g.size(), 0.0);
+            std::vector<double> center(g.size(), 1.0 / g.size());
+            if (g.size() > 1) {
+                Random::DirichletSample(sub, center, ((double)g.size()));
+            } else {
+                sub[0] = 1.0;
+            }
+            for (size_t k = 0; k < g.size(); k++) { codonfitness[g[k]] = sub[k]; }
+        }
         if (clamp_codonfitness) {
             std::copy(codonprefs.begin(), codonprefs.end(), codonfitness.begin());
+            NormaliseCodonFitness();  // file is a global simplex: rescale to sum 1 per AA
         } else if (flatcodonfitness) {
-            codonfitness.assign(Nstate, 1.0 / Nstate);
+            // flat = uniform theta within each AA (theta_c = 1/n_a), i.e. codonweight = 1
+            for (auto const &g : synonymousgroups) {
+                for (int c : g) { codonfitness[c] = 1.0 / g.size(); }
+            }
             clamp_codonfitness = true;
         }
+        UpdateCodonWeights();
 
         // base distribution (can be skipped)
         basekappa = 1.0;
@@ -701,7 +737,7 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         // Ncat*omegaNcat mut sel codon matrices (based on the Ncat fitness profiles of the mixture,
         // and the omegaNcat finite mixture for omega)
         componentcodonmatrixbidimarray =
-            new AACodonMutSelCodonMatrixBidimArray(GetCodonStateSpace(), nucmatrix, &codonfitness,
+            new AACodonMutSelCodonMatrixBidimArray(GetCodonStateSpace(), nucmatrix, &codonweight,
                 componentaafitnessarray, delta_omega_array, omega_shift);
 
         // Bidimselector, specifying which codon matrix should be used for each site
@@ -824,8 +860,19 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         return nucstat[i];
     }
 
+    //! relative preference theta_c among synonymous codons (sum 1 per AA)
     double GetCodonFitness(int i) {
         assert(i < Nstate);
+        return codonfitness[i];
+    }
+
+    //! degeneracy-weighted preference n_a * theta_c used by the substitution
+    //! matrices (SENCA); falls back to theta if not yet built.
+    double GetCodonWeight(int i) {
+        assert(i < Nstate);
+        if (codonweight.size() == codonfitness.size()) {
+            return codonweight[i];
+        }
         return codonfitness[i];
     }
 
@@ -900,9 +947,27 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         componentcodonmatrixbidimarray->CorruptRowCodonMatrices(k);
     }
 
+    //! rescale codonfitness so that it sums to 1 within each synonymous group (SENCA codon layer)
+    void NormaliseCodonFitness() {
+        for (auto const &g : synonymousgroups) {
+            double tot = 0;
+            for (int c : g) { tot += codonfitness[c]; }
+            for (int c : g) { codonfitness[c] /= tot; }
+        }
+    }
+
+    //! codonweight_c = n_a * theta_c (degeneracy x intra-AA preference), used by the matrices
+    void UpdateCodonWeights() {
+        codonweight.resize(codonfitness.size());
+        for (auto const &g : synonymousgroups) {
+            for (int c : g) { codonweight[c] = g.size() * codonfitness[c]; }
+        }
+    }
+
     //! \brief tell the nucleotide and the codon matrices that their parameters
     //! have changed and that it should be updated
     void UpdateMatrices() {
+        UpdateCodonWeights();
         UpdateNucMatrix();
         CorruptCodonMatrices();
     }
@@ -994,12 +1059,14 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         return total;
     }
 
-    //! log prior over codonfitness (uniform)
+    //! log prior over codonfitness: product over AA of uniform Dirichlet(1,..,1) on the n_a
+    //! synonymous codons. Density w.r.t. Lebesgue measure on the (n_a - 1) free coordinates of
+    //! each simplex = Gamma(n_a), hence log prior = sum_a logGamma(n_a) (constant; single-codon
+    //! AAs contribute logGamma(1) = 0). Consistent with the Gamma representation used in
+    //! MoveCodonGamma: theta = x / sum(x), x_c iid Gamma(1) per group.
     double CodonFitnessLogPrior() const {
         double total = 0;
-        total += Random::logDirichletDensity(
-            codonfitness, codonfitnesshypercenter, 1.0 / codonfitnesshyperinvconc);
-
+        for (auto const &g : synonymousgroups) { total += Random::logGamma((double)g.size()); }
         return total;
     }
 
@@ -1248,8 +1315,7 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
             // the path log prob is common to both parameters: count it once
             double deltalogprob =
                 -CodonFitnessLogPrior() - NucRatesLogPrior() - PathSuffStatLogProb();
-            deltalogprob += Random::ProfileProposeMove(
-                codonfitness, codonfitness.size(), tuning_codon, n_codon);
+            deltalogprob += ProposeSynonymousPairMove(tuning_codon, n_codon);
             deltalogprob += Random::ProfileProposeMove(nucstat, nucstat.size(), tuning_stat, n_stat);
             UpdateMatrices();
             deltalogprob += CodonFitnessLogPrior() + NucRatesLogPrior() + PathSuffStatLogProb();
@@ -1274,19 +1340,47 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         MoveCodonNucStat(0.01, 3, 0.01, 1, nrep);
         MoveCodonNucStat(0.001, 3, 0.01, 1, nrep);
     }
-    //! MH move on codonfitnesses parameters
-    void MoveCodon() {
-        Move::Profile(codonfitness, 1.0, 1, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
-            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.1, 3, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
-            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.01, 3, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
-            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
-        Move::Profile(codonfitness, 0.001, 3, 3, &AACodonMutSelMultipleOmega::CodonFitnessLogProb,
-            &AACodonMutSelMultipleOmega::UpdateMatrices, this);
+    //! "vase communiquants" proposal restricted to synonymous codons: n times, draw a
+    //! synonymous group with >= 2 codons uniformly, then an ordered pair (i1,i2) of distinct
+    //! codons in it, and redistribute theta[i1]+theta[i2] between them (reflected uniform
+    //! slide, as Random::ProfileProposeMove). The pair sum is conserved, so sum_{syn(a)} theta
+    //! = 1 holds exactly for every AA (the global ProfileProposeMove over the 61 entries would
+    //! only conserve the global sum and move mass between AAs). The kernel is symmetric
+    //! (group choice and ordered-pair choice do not depend on the state): log Hastings = 0.
+    double ProposeSynonymousPairMove(double tuning, int n) {
+        std::vector<int> multi;  // groups with at least 2 codons
+        for (size_t g = 0; g < synonymousgroups.size(); g++) {
+            if (synonymousgroups[g].size() > 1) { multi.push_back(g); }
+        }
+        for (int k = 0; k < n; k++) {
+            auto const &grp = synonymousgroups[multi[(int)(Random::Uniform() * multi.size())]];
+            int m = grp.size();
+            int a = (int)(Random::Uniform() * m);
+            int b = (int)(Random::Uniform() * (m - 1));
+            if (b >= a) { b++; }
+            int i1 = grp[a];
+            int i2 = grp[b];
+            double tot = codonfitness[i1] + codonfitness[i2];
+            double x = codonfitness[i1] + tot * tuning * (Random::Uniform() - 0.5);
+            while ((x < 0) || (x > tot)) {
+                if (x < 0) { x = -x; }
+                if (x > tot) { x = 2 * tot - x; }
+            }
+            codonfitness[i1] = x > 1e-50 ? x : 1e-50;
+            codonfitness[i2] = tot - x > 1e-50 ? tot - x : 1e-50;
+        }
+        return 0;
     }
 
-    //! MH move on codonfitness: additive compensated move on n pairs of entries
+    //! MH move on codonfitnesses parameters (group-wise additive pair moves)
+    void MoveCodon() {
+        MoveCodonAddPair(1.0, 1, 3);
+        MoveCodonAddPair(0.1, 3, 3);
+        MoveCodonAddPair(0.01, 3, 3);
+        MoveCodonAddPair(0.001, 3, 3);
+    }
+
+    //! MH move on codonfitness: additive compensated move on n synonymous pairs of entries
     double MoveCodonAddPair(double tuning, int n, int nrep) {
         double nacc = 0;
         double ntot = 0;
@@ -1294,7 +1388,7 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         for (int rep = 0; rep < nrep; rep++) {
             bk = codonfitness;
             double deltalogprob = -CodonFitnessLogPrior() - PathSuffStatLogProb();
-            deltalogprob += Random::ProfileProposeMove(codonfitness, Nstate, tuning, n);
+            deltalogprob += ProposeSynonymousPairMove(tuning, n);
             UpdateMatrices();
             deltalogprob += CodonFitnessLogPrior() + PathSuffStatLogProb();
 
@@ -1321,66 +1415,69 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
         MoveCodonAddPair(1, 2, 1);
     }
 
-    //! helper function: log density of Nstate gammas
-    double GammaCodonLogPrior(
-        const std::vector<double> &x, const std::vector<double> &codoncenter, double codonconc) {
+    //! helper function: log density of the Gamma(1) variables x_c underlying each
+    //! synonymous Dirichlet(1,..,1) (alpha = 1: log density = -x_c). Single-codon AAs have no
+    //! free parameter and are excluded.
+    double GammaCodonLogPrior(const std::vector<double> &x) {
         double total = 0;
-        for (int l = 0; l < Nstate; l++) {
-            total += (codonconc * codoncenter[l] - 1) * log(x[l]) - x[l] -
-                     Random::logGamma(codonconc * codoncenter[l]);
+        for (auto const &g : synonymousgroups) {
+            if (g.size() > 1) {
+                for (int c : g) { total -= x[c]; }
+            }
         }
         return total;
     }
 
-    //! MH move on codonfitness: multiplicative move (using the Gamma
-    //! representation of the Dirichlet)
+    //! MH move on codonfitness: multiplicative move, per synonymous group (Gamma
+    //! representation of each Dirichlet: theta_c = x_c / sum_{syn} x, x_c ~ Gamma(1)).
+    //! Dividing by the group sum after the move keeps sum_{syn(a)} theta = 1 for every AA.
+    //! As in mutselc, the auxiliary sum z_g ~ Gamma(n_a) is redrawn (Gibbs) so x = z_g * theta.
     double MoveCodonGamma(double tuning, int nrep) {
         double nacc = 0;
         double ntot = 0;
-        double codonconc = 1.0 / codonfitnesshyperinvconc;
-        const std::vector<double> &codoncenter = codonfitnesshypercenter;
 
         std::vector<double> x(Nstate, 0);
-        double z = Random::sGamma(codonconc);
-        for (int l = 0; l < Nstate; l++) { x[l] = z * codonfitness[l]; }
+        for (auto const &g : synonymousgroups) {
+            double z = Random::sGamma((double)g.size());
+            for (int c : g) { x[c] = z * codonfitness[c]; }
+        }
 
-        double bkz = z;
         std::vector<double> bkx = x;
         std::vector<double> bkcodon = codonfitness;
 
         for (int rep = 0; rep < nrep; rep++) {
-            double deltalogprob =
-                -GammaCodonLogPrior(x, codoncenter, codonconc) - PathSuffStatLogProb();
+            double deltalogprob = -GammaCodonLogPrior(x) - PathSuffStatLogProb();
 
             double loghastings = 0;
-            z = 0;
-            for (int l = 0; l < Nstate; l++) {
-                double m = tuning * (Random::Uniform() - 0.5);
-                x[l] *= exp(m);
-                z += x[l];
-                loghastings += m;
-            }
-            for (int l = 0; l < Nstate; l++) {
-                codonfitness[l] = x[l] / z;
-                if (codonfitness[l] < 1e-50) { codonfitness[l] = 1e-50; }
+            for (auto const &g : synonymousgroups) {
+                if (g.size() == 1) { continue; }  // theta = 1 fixed
+                double z = 0;
+                for (int c : g) {
+                    double m = tuning * (Random::Uniform() - 0.5);
+                    x[c] *= exp(m);
+                    z += x[c];
+                    loghastings += m;
+                }
+                for (int c : g) {
+                    codonfitness[c] = x[c] / z;
+                    if (codonfitness[c] < 1e-50) { codonfitness[c] = 1e-50; }
+                }
             }
 
             deltalogprob += loghastings;
 
             UpdateMatrices();
 
-            deltalogprob += GammaCodonLogPrior(x, codoncenter, codonconc) + PathSuffStatLogProb();
+            deltalogprob += GammaCodonLogPrior(x) + PathSuffStatLogProb();
 
             int accepted = (log(Random::Uniform()) < deltalogprob);
             if (accepted) {
                 nacc++;
                 bkcodon = codonfitness;
                 bkx = x;
-                bkz = z;
             } else {
                 codonfitness = bkcodon;
                 x = bkx;
-                z = bkz;
                 UpdateMatrices();
             }
             ntot++;

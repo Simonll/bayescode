@@ -360,7 +360,7 @@ int main(int argc, char *argv[]) {
             return model.GetAASiteFitness(site, aa) + kFitnessFloor;
         };
         auto codon_fitness = [&model](int codon) {
-            return model.GetCodonFitness(codon) + kFitnessFloor;
+            return model.GetCodonWeight(codon) + kFitnessFloor;
         };
 
         for (int step = 0; step < size; step++) {
