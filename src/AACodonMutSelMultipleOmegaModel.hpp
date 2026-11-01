@@ -1,6 +1,7 @@
 #pragma once
 
 #include <limits>
+#include "AcceptanceTracker.hpp"
 #include "AACodonMutSelCodonMatrixBidimArray.hpp"
 #include "Chrono.hpp"
 #include "CodonSequenceAlignment.hpp"
@@ -323,6 +324,8 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
     // codonfitness
     std::vector<double> codonfitness;
 
+    // MCMC iteration counter (for periodic acceptance reporting)
+    int accept_iter{0};
 
     bool clamp_delta_omega_array{false};
     std::string delta_omega_array_file = "Null";
@@ -1147,6 +1150,8 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
     double Move() {
         ResampleSub(1.0);
         MoveParameters(30);
+        accept_iter++;
+        AcceptanceTracker::get().periodicReport(accept_iter);
         return 1.0;
     }
 
@@ -1302,6 +1307,7 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
             }
             ntot++;
         }
+        AcceptanceTracker::get().add("aac_pair_t" + std::to_string((int)(tuning * 1000.0)) + "_n" + std::to_string(n), nacc, ntot);
         return nacc / ntot;
     }
 
@@ -1379,14 +1385,15 @@ class AACodonMutSelMultipleOmega : public ChainComponent {
             }
             ntot++;
         }
+        AcceptanceTracker::get().add("aac_codongamma", nacc, ntot);
         return nacc / ntot;
     }
 
     //! full move schedule on codonfitness: additive pairs then multiplicative
     void MoveCodonFull() {
         MoveCodonAddPairSchedule();
-        MoveCodonGamma(3.0, 1);
-        MoveCodonGamma(1.0, 1);
+        MoveCodonGamma(0.1, 1);
+        MoveCodonGamma(0.1, 1);
     }
 
     //! MCMC module for the mixture amino-acid fitness profiles
