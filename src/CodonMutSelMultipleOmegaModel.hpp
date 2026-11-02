@@ -394,6 +394,10 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     bool flatfitness;
     bool flatnucstat;
     bool flatnucrelrate;
+
+    // number of mapping resamples per MCMC iteration (each followed by 30/resampleblocks
+    // parameter moves); 1 = historical schedule
+    int resampleblocks{5};
     Chrono profilechrono;
     Chrono basechrono;
     Chrono totchrono;
@@ -419,7 +423,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         std::string inprofilesfile, std::string innucstat, std::string innucrelrate,
         int inomegamode, int inNcat, int inbaseNcat, int inomegaNcat, double inomegashift,
         bool inflatfitness, std::string indelta_omega_array_file, bool inflatnucstat,
-        bool inflatnucrelrate)
+        bool inflatnucrelrate, int inresampleblocks = 5)
         : datafile(std::move(indatafile)),
           treefile(std::move(intreefile)),
           profilesfile(std::move(inprofilesfile)),
@@ -433,7 +437,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
           omegamode(inomegamode),
           flatfitness(inflatfitness),
           flatnucstat(inflatnucstat),
-          flatnucrelrate(inflatnucrelrate) {
+          flatnucrelrate(inflatnucrelrate),
+          resampleblocks(inresampleblocks) {
         init();
         Update();
     }
@@ -1186,8 +1191,22 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     //! complete MCMC move schedule
     double Move() {
-        ResampleSub(1.0);
-        MoveParameters(30);
+        // If resampleblocks (--resampleblocks, default 5) is K>1, do K independent
+        // mapping resamples, each followed by 30/K parameter moves (same
+        // parameter-move budget, more mapping updates -> branch lengths drift
+        // faster). K<=1 gives the historical schedule: one ResampleSub then 30
+        // parameter moves.
+        const int K = resampleblocks;
+        if (K > 1) {
+            int nper = std::max(30 / K, 1);
+            for (int b = 0; b < K; b++) {
+                ResampleSub(1.0);
+                MoveParameters(nper);
+            }
+        } else {
+            ResampleSub(1.0);
+            MoveParameters(30);
+        }
         accept_iter++;
         AcceptanceTracker::get().periodicReport(accept_iter);
         return 1.0;

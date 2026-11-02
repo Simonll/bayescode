@@ -53,6 +53,10 @@ class CodonMutselArgParse : public BaseArgParse {
         "File path to ω values (one ω per line), thus considered fixed. "
         "`freeomega` is overridden to false and `omegancat` equals to the number of ω in the file.",
         false, "Null", "string", cmd};
+    ValueArg<int> resampleblocks{"", "resampleblocks",
+        "Number of substitution-mapping resamples per MCMC iteration; each is followed by "
+        "30/resampleblocks parameter moves (1 = historical schedule: one resample then 30 moves).",
+        false, 5, "int", cmd};
 
     //! - omegamode: omega fixed (3) or estimated without shrinkage (0)
     int omegamode() {
@@ -97,7 +101,8 @@ int main(int argc, char *argv[]) {
             codonmutsel_args.flatfitness.getValue(),
             codonmutsel_args.omegaarray.getValue(),
             codonmutsel_args.flatnucstat.getValue(),
-            codonmutsel_args.flatnucrelrate.getValue()));
+            codonmutsel_args.flatnucrelrate.getValue(),
+            codonmutsel_args.resampleblocks.getValue()));
     }
 
     ConsoleLogger console_logger;
