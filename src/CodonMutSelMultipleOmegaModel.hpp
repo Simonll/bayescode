@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdlib>
 #include <limits>
 #include "Chrono.hpp"
 #include "CodonMutSelCodonMatrixBidimArray.hpp"
@@ -391,6 +390,11 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     bool flatfitness;
     bool flatnucstat;
     bool flatnucrelrate;
+
+    //! number of mapping resamples per MCMC iteration (each followed by
+    //! 30/resampleblocks parameter moves); 1 = historical schedule
+    int resampleblocks{5};
+
     Chrono profilechrono;
     Chrono basechrono;
     Chrono totchrono;
@@ -416,7 +420,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
         std::string inprofilesfile, std::string innucstat, std::string innucrelrate,
         int inomegamode, int inNcat, int inbaseNcat, int inomegaNcat, double inomegashift,
         bool inflatfitness, std::string indelta_omega_array_file, bool inflatnucstat,
-        bool inflatnucrelrate)
+        bool inflatnucrelrate, int inresampleblocks = 5)
         : datafile(std::move(indatafile)),
           treefile(std::move(intreefile)),
           profilesfile(std::move(inprofilesfile)),
@@ -430,7 +434,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
           omegamode(inomegamode),
           flatfitness(inflatfitness),
           flatnucstat(inflatnucstat),
-          flatnucrelrate(inflatnucrelrate) {
+          flatnucrelrate(inflatnucrelrate),
+          resampleblocks(inresampleblocks) {
         init();
         Update();
     }
@@ -1183,12 +1188,11 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
 
     //! complete MCMC move schedule
     double Move() {
-        // Experimental: default = 1 ResampleSub + 30 parameter moves. If env
-        // BAYESCODE_RESAMPLE_BLOCKS=K>0, do K independent mapping resamples each
-        // followed by 30/K parameter moves (same budget, length drifts faster).
-        int K = 0;
-        if (const char* e = std::getenv("BAYESCODE_RESAMPLE_BLOCKS")) { K = std::atoi(e); }
-        if (K > 0) {
+        // resampleblocks (--resampleblocks, default 5): if K>1, do K independent
+        // mapping resamples, each followed by 30/K parameter moves (same budget, more
+        // mapping updates -> branch lengths drift faster). K<=1 = historical schedule.
+        const int K = resampleblocks;
+        if (K > 1) {
             int nper = 30 / K; if (nper < 1) { nper = 1; }
             for (int b = 0; b < K; b++) {
                 ResampleSub(1.0);
