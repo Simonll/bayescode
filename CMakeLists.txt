@@ -48,6 +48,7 @@ add_library(tree_lib STATIC "src/tree/implem.cpp")
 set(BAYESCODE_LIB
     src/lib/CodonMutSelOmegaCodonSubMatrix.cpp
     src/lib/AAMutSelOmegaCodonSubMatrix.cpp
+    src/lib/AACodonMutSelOmegaCodonSubMatrix.cpp
     src/lib/AAMutSelNeCodonMatrixBidimArray.cpp
     src/lib/BranchSitePath.cpp
     src/lib/Chain.cpp
@@ -99,6 +100,14 @@ target_link_libraries(mutselomega ${BASE_LIBS})
 # Read amino-acid mutation-selection (readmutselomega)
 add_executable(readmutselomega "src/ReadAAMutSelMultipleOmega.cpp")
 target_link_libraries(readmutselomega ${BASE_LIBS})
+
+# Amino-acid + codon-preference mutation-selection (mutselaac)
+add_executable(mutselaac "src/AACodonMutSelMultipleOmega.cpp")
+target_link_libraries(mutselaac ${BASE_LIBS})
+
+# Read amino-acid + codon-preference mutation-selection (readmutselaac)
+add_executable(readmutselaac "src/ReadAACodonMutSelMultipleOmega.cpp")
+target_link_libraries(readmutselaac ${BASE_LIBS})
 
 # Node Ne mutsel (nodemutsel)
 add_executable(nodemutsel "src/DatedNodeMutSel.cpp")

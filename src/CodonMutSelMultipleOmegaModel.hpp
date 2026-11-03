@@ -1,6 +1,7 @@
 #pragma once
 
 #include <limits>
+#include "AcceptanceTracker.hpp"
 #include "Chrono.hpp"
 #include "CodonMutSelCodonMatrixBidimArray.hpp"
 #include "CodonSequenceAlignment.hpp"
@@ -365,6 +366,9 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
     DoubleMixtureSelector<CodonMutSelOmegaCodonSubMatrix> *sitecodonsubmatrixarray;
 
     MixtureSelector<std::vector<double>> *sitecodonfitnessarray;
+
+    // MCMC iteration counter (for periodic acceptance reporting)
+    int accept_iter{0};
 
     PhyloProcess *phyloprocess;
 
@@ -1202,6 +1206,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
             ResampleSub(1.0);
             MoveParameters(30);
         }
+        accept_iter++;
+        AcceptanceTracker::get().periodicReport(accept_iter);
         return 1.0;
     }
 
@@ -1361,6 +1367,7 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 }
             }
         }
+        AcceptanceTracker::get().add("mutselc_codon_pair", nacc, ntot);
         return AcceptanceRate(nacc, ntot);
     }
 
@@ -1450,6 +1457,8 @@ class CodonMutSelMultipleOmegaModel : public ChainComponent {
                 }
             }
         }
+        AcceptanceTracker::get().add(
+            (tuning == 3.0) ? "mutselc_codongamma3" : "mutselc_codongamma1", nacc, ntot);
         return AcceptanceRate(nacc, ntot);
     }
 

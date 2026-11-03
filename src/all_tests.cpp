@@ -24,6 +24,7 @@
 #include "lib/test_codonmutsel_lot6.cpp"
 
 #include "lib/test_codonmutsel_normflux.cpp"
+#include "lib/test_codonmutsel_normflux_aac.cpp"
 
 #include "operations/test.cpp"
 

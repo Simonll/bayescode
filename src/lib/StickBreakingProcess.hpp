@@ -166,6 +166,7 @@ class StickBreakingProcess : public SimpleArray<double> {
 
     //! label-switching MCMC udpate: swapping two successive components
     double MoveAdjacentCompAlloc(int k0, OccupancySuffStat &occupancy, Permutation &permut) {
+        if (GetSize() < 2) { return 0; }  // no adjacent pair to swap
         GibbsResample(occupancy);
         int nrep = (int)(k0 * kappa);
 
