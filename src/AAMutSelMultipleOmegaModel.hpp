@@ -255,6 +255,10 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
 
     bool flatfitness;
 
+    //! number of mapping resamples per MCMC iteration (each followed by
+    //! 30/resampleblocks parameter moves); 1 = historical schedule
+    int resampleblocks{5};
+
     Chrono aachrono;
     Chrono basechrono;
     Chrono totchrono;
@@ -278,7 +282,8 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
     //! default: 1)
     AAMutSelMultipleOmegaModel(std::string indatafile, std::string intreefile,
         std::string inprofilesfile, int inomegamode, int inNcat, int inbaseNcat, int inomegaNcat,
-        double inomegashift, bool inflatfitness, std::string indelta_omega_array_file)
+        double inomegashift, bool inflatfitness, std::string indelta_omega_array_file,
+        int inresampleblocks = 5)
         : datafile(std::move(indatafile)),
           treefile(std::move(intreefile)),
           profilesfile(std::move(inprofilesfile)),
@@ -288,7 +293,8 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
           baseNcat(inbaseNcat),
           Ncat(inNcat),
           omegamode(inomegamode),
-          flatfitness(inflatfitness) {
+          flatfitness(inflatfitness),
+          resampleblocks(inresampleblocks) {
         init();
         Update();
     }
@@ -862,8 +868,20 @@ class AAMutSelMultipleOmegaModel : public ChainComponent {
 
     //! complete MCMC move schedule
     double Move() {
-        ResampleSub(1.0);
-        MoveParameters(30);
+        // resampleblocks (--resampleblocks, default 5): if K>1, do K independent
+        // mapping resamples, each followed by 30/K parameter moves (same budget,
+        // more mapping updates -> branch lengths drift faster). K<=1 = historical.
+        const int K = resampleblocks;
+        if (K > 1) {
+            int nper = 30 / K; if (nper < 1) { nper = 1; }
+            for (int b = 0; b < K; b++) {
+                ResampleSub(1.0);
+                MoveParameters(nper);
+            }
+        } else {
+            ResampleSub(1.0);
+            MoveParameters(30);
+        }
         return 1.0;
     }
 
