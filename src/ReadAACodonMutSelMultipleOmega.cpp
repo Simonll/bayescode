@@ -309,11 +309,13 @@ int main(int argc, char *argv[]) {
             for (Tree::NodeIndex node = 0; node < Tree::NodeIndex(model.GetTree().nb_nodes());
                  node++) {
                 if (!model.GetTree().is_root(node)) {
-                    // 3x: per coding site (and not per nucleotide site).
+                    // subst/codon, matching mutselc (commit 130f583): the LFP
+                    // simulator clock is per-codon (mutation flux = 1 per codon),
+                    // so writing 3*blength made LFP simulate ~3x too many subs.
                     // to_string would print 6 fixed decimals, flattening tiny branches to 0.
                     std::ostringstream length_stream;
                     length_stream << std::setprecision(std::numeric_limits<double>::max_digits10)
-                                  << 3 * model.GetBranchLength(node);
+                                  << model.GetBranchLength(node);
                     export_tree.set_tag(node, "length", length_stream.str());
                 }
             }
