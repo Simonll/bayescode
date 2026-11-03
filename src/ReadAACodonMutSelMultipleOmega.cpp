@@ -313,7 +313,7 @@ int main(int argc, char *argv[]) {
                     // to_string would print 6 fixed decimals, flattening tiny branches to 0.
                     std::ostringstream length_stream;
                     length_stream << std::setprecision(std::numeric_limits<double>::max_digits10)
-                                  << 3 * model.GetBranchLength(node);
+                                  << model.GetBranchLength(node);
                     export_tree.set_tag(node, "length", length_stream.str());
                 }
             }
