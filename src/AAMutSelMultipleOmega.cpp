@@ -42,6 +42,10 @@ class AAMutselArgParse : public BaseArgParse {
         "File path to ω values (one ω per line), thus considered fixed. "
         "`freeomega` is overridden to false and `omegancat` equals to the number of ω in the file.",
         false, "Null", "string", cmd};
+    ValueArg<int> resampleblocks{"", "resampleblocks",
+        "Number of substitution-mapping resamples per MCMC iteration; each is followed by "
+        "30/resampleblocks parameter moves (1 = historical schedule: one resample then 30 moves).",
+        false, 5, "int", cmd};
 
     //! - omegamode: omega fixed (3), shared across genes (2) or estimated with
     //! shrinkage across genes (1) or without shrinkage (0)
@@ -75,7 +79,8 @@ int main(int argc, char *argv[]) {
             aamutsel_args.profiles.getValue(), aamutsel_args.omegamode(),
             aamutsel_args.ncat.getValue(), 1, aamutsel_args.omegancat.getValue(),
             aamutsel_args.omegashift.getValue(), aamutsel_args.flatfitness.getValue(),
-            aamutsel_args.omegaarray.getValue());
+            aamutsel_args.omegaarray.getValue(),
+            aamutsel_args.resampleblocks.getValue());
     }
 
     ConsoleLogger console_logger;
